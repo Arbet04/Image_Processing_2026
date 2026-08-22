@@ -1,0 +1,54 @@
+# --- Virtual Environment ---
+.venv/
+venv/
+env/
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# --- Environment / Secrets ---
+.env
+.env.local
+*.env
+
+# --- Jupyter ---
+.ipynb_checkpoints/
+
+# --- Model weights & cache (มักหนักหลาย GB ไม่ควร push ขึ้น GitHub) ---
+models/
+*.ckpt
+*.safetensors
+*.pt
+*.pth
+*.bin
+huggingface_cache/
+.cache/
+
+# --- Generated output images (เก็บ path/metadata ใน DB แทน) ---
+outputs/
+generated_images/
+*.png
+*.jpg
+*.jpeg
+!docs/**/*.png
+!docs/**/*.jpg
+
+# --- Logs ---
+*.log
+logs/
+
+# --- OS / Editor ---
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# --- Redis / Celery ---
+celerybeat-schedule
+celerybeat.pid
