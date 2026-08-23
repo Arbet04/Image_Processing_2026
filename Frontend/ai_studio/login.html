@@ -456,7 +456,7 @@
     localStorage.setItem(SESSION_KEY, JSON.stringify(user));
     // Logged in → go to the chat page (chat.html and gen.html both read
     // this same session key, so no need to log in again there).
-    window.location.href = 'chat.html';
+    window.location.href = 'index.html';
   }
 
   function checkSession() {
@@ -464,7 +464,7 @@
       const session = JSON.parse(localStorage.getItem(SESSION_KEY));
       if (session && session.email) {
         // Already logged in — skip straight to the app.
-        window.location.href = 'chat.html';
+        window.location.href = 'index.html';
         return;
       }
     } catch {}
