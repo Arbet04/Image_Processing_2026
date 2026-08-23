@@ -4,6 +4,9 @@
 """
 
 import os
+from dotenv import load_dotenv
+
+load_dotenv()  # โหลดค่าจากไฟล์ .env (เช่น GEMINI_API_KEY) เข้ามาเป็น environment variable
 
 # URL ของ Forge Neo ที่รันอยู่บนเครื่อง (เปลี่ยนได้ผ่าน environment variable FORGE_BASE_URL)
 FORGE_BASE_URL = os.getenv("FORGE_BASE_URL", "http://127.0.0.1:7860")
@@ -15,3 +18,7 @@ FORGE_TIMEOUT_SECONDS = 120
 DEFAULT_STEPS = 20
 DEFAULT_WIDTH = 512
 DEFAULT_HEIGHT = 512
+
+# --- Gemini (chatbot) ---
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.5-flash")

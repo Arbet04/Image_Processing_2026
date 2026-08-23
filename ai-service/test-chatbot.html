@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<title>ทดสอบ Chatbot (Gemini + Forge Neo)</title>
+<style>
+  body {
+    font-family: -apple-system, "Segoe UI", sans-serif;
+    max-width: 640px;
+    margin: 40px auto;
+    padding: 0 20px;
+    background: #111;
+    color: #eee;
+  }
+  h1 { font-size: 20px; margin-bottom: 4px; }
+  .sub { color: #888; font-size: 13px; margin-bottom: 20px; }
+
+  #chatBox {
+    border: 1px solid #333;
+    border-radius: 10px;
+    height: 480px;
+    overflow-y: auto;
+    padding: 16px;
+    background: #171717;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .msg { max-width: 80%; padding: 10px 14px; border-radius: 12px; font-size: 14px; line-height: 1.5; }
+  .msg.user { align-self: flex-end; background: #2563eb; color: white; }
+  .msg.bot { align-self: flex-start; background: #262626; color: #eee; }
+  .msg img { max-width: 100%; border-radius: 8px; margin-top: 8px; display: block; }
+  .msg.pending { align-self: flex-start; background: #262626; color: #888; font-style: italic; }
+
+  .inputRow { display: flex; gap: 8px; margin-top: 12px; }
+  #messageInput {
+    flex: 1;
+    padding: 12px;
+    background: #1c1c1c;
+    border: 1px solid #333;
+    border-radius: 8px;
+    color: #eee;
+    font-size: 14px;
+  }
+  button {
+    padding: 0 20px;
+    background: #f37021;
+    border: none;
+    border-radius: 8px;
+    color: white;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  button:disabled { background: #555; cursor: not-allowed; }
+
+  .config {
+    margin-top: 16px;
+    font-size: 12px;
+    color: #777;
+  }
+  .config input {
+    background: #1c1c1c;
+    border: 1px solid #333;
+    color: #ccc;
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-size: 12px;
+  }
+</style>
+</head>
+<body>
+
+  <h1>ทดสอบ Chatbot</h1>
+  <div class="sub">คุยธรรมดาได้ปกติ ลองพิมพ์ "อยากได้รูปหมาสีดำ" ดูว่าเรียก Forge Neo เจนรูปให้ไหม</div>
+
+  <div id="chatBox"></div>
+
+  <div class="inputRow">
+    <input type="text" id="messageInput" placeholder="พิมพ์ข้อความที่นี่..." onkeydown="if(event.key==='Enter') sendMessage()">
+    <button id="sendBtn" onclick="sendMessage()">ส่ง</button>
+  </div>
+
+  <div class="config">
+    API URL: <input type="text" id="apiUrl" value="http://127.0.0.1:8001/chat" size="34">
+    &nbsp;|&nbsp; session_id: <span id="sessionIdLabel"></span>
+    (สุ่มใหม่ทุกครั้งที่เปิดหน้านี้ เพื่อให้แต่ละคนคุยแยกกัน)
+  </div>
+
+<script>
+// สุ่ม session_id ใหม่ทุกครั้งที่เปิดหน้า เพื่อให้แต่ละคนที่ทดสอบไม่ปนบทสนทนากัน
+const sessionId = 'test-' + Math.random().toString(36).slice(2, 10);
+document.getElementById('sessionIdLabel').textContent = sessionId;
+
+function addMessage(text, sender, imageBase64) {
+  const chatBox = document.getElementById('chatBox');
+  const div = document.createElement('div');
+  div.className = 'msg ' + sender;
+
+  if (text) {
+    const p = document.createElement('div');
+    p.textContent = text;
+    div.appendChild(p);
+  }
+
+  if (imageBase64) {
+    const img = document.createElement('img');
+    img.src = 'data:image/png;base64,' + imageBase64;
+    div.appendChild(img);
+  }
+
+  chatBox.appendChild(div);
+  chatBox.scrollTop = chatBox.scrollHeight;
+  return div;
+}
+
+async function sendMessage() {
+  const input = document.getElementById('messageInput');
+  const btn = document.getElementById('sendBtn');
+  const apiUrl = document.getElementById('apiUrl').value.trim();
+  const message = input.value.trim();
+
+  if (!message) return;
+
+  addMessage(message, 'user');
+  input.value = '';
+  btn.disabled = true;
+
+  const pending = addMessage('กำลังคิด... (ถ้าเจนรูปอาจใช้เวลาสักครู่)', 'pending');
+
+  try {
+    const res = await fetch(apiUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ session_id: sessionId, message: message })
+    });
+
+    const data = await res.json();
+    pending.remove();
+
+    if (!res.ok || data.success === false) {
+      addMessage('เกิดข้อผิดพลาด: ' + (data.detail || data.error || res.statusText), 'bot');
+    } else {
+      addMessage(data.text, 'bot', data.image_base64);
+    }
+
+  } catch (err) {
+    pending.remove();
+    addMessage('เชื่อมต่อ API ไม่ได้: ' + err.message + ' (เช็คว่าเปิด ai-service ทิ้งไว้หรือยัง)', 'bot');
+  } finally {
+    btn.disabled = false;
+    input.focus();
+  }
+}
+</script>
+
+</body>
+</html>

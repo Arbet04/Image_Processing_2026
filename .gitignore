@@ -72,3 +72,4 @@ instance/
 # --- Docker (เผื่อคนที่ 5 ใช้ตอนทำ Reverse Proxy) ---
 *.pid
 docker-compose.override.yml
+ai-service/ai-service-run.txt

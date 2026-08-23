@@ -14,8 +14,9 @@ FastAPI Wrapper สำหรับ Forge Neo
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
-from models import GenerateRequest, GenerateResponse, HealthResponse
+from models import GenerateRequest, GenerateResponse, HealthResponse, ChatRequest, ChatResponse
 from forge_client import generate_image, check_health, ForgeConnectionError, ForgeGenerationError
+from gemini_client import handle_chat_message
 from config import FORGE_BASE_URL
 
 app = FastAPI(
@@ -63,6 +64,26 @@ async def generate(req: GenerateRequest):
     except ForgeGenerationError as e:
         # Forge Neo เปิดอยู่แต่ generate ไม่สำเร็จ — ส่ง 502 (Bad Gateway) กลับไป
         raise HTTPException(status_code=502, detail=str(e))
+
+
+@app.post("/chat", response_model=ChatResponse)
+async def chat(req: ChatRequest):
+    """
+    Endpoint สำหรับ chatbot — คุยธรรมดาได้ และถ้า user ขอรูป
+    Gemini จะตัดสินใจเรียก Forge Neo ให้เองอัตโนมัติ (ดู gemini_client.py)
+    """
+    try:
+        result = await handle_chat_message(req.session_id, req.message)
+        return ChatResponse(
+            success=True,
+            text=result["text"],
+            image_base64=result["image_base64"],
+        )
+
+    except Exception as e:
+        # ครอบกว้างไว้ก่อน เพราะ error จาก Gemini SDK มีหลายแบบ
+        # (เช่น API key ผิด, โควตาหมด, network หลุด)
+        raise HTTPException(status_code=502, detail=f"Chatbot เกิดข้อผิดพลาด: {str(e)}")
 
 
 @app.get("/")
