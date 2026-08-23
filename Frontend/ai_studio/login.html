@@ -420,9 +420,19 @@
 
     users.push({ name, email, password });
     saveUsers(users);
-    setAuthMsg('signup-msg', '✅ สร้างบัญชีสำเร็จ! กำลังเข้าสู่ระบบ...', 'success');
 
-    setTimeout(() => startSession({ name, email }), 500);
+    setAuthMsg(
+      'signup-msg',
+      '✅ สร้างบัญชีสำเร็จ! กรุณาเข้าสู่ระบบ',
+      'success'
+    );
+
+    setTimeout(() => {
+      switchAuthTab('login');
+
+      document.getElementById('login-email').value = email;
+      document.getElementById('login-password').value = '';
+    }, 1000);
   }
 
   function handleLogin(e) {
