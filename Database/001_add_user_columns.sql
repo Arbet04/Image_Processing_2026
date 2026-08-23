@@ -1,0 +1,17 @@
+-- Migration: add role, status, updated_at, last_login to users
+BEGIN;
+
+ALTER TABLE users
+  ADD COLUMN IF NOT EXISTS role VARCHAR(20) NOT NULL DEFAULT 'user',
+  ADD COLUMN IF NOT EXISTS status VARCHAR(20) NOT NULL DEFAULT 'active',
+  ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  ADD COLUMN IF NOT EXISTS last_login TIMESTAMP;
+
+UPDATE users
+SET updated_at = COALESCE(updated_at, created_at, CURRENT_TIMESTAMP)
+WHERE updated_at IS NULL;
+
+ALTER TABLE users
+  ALTER COLUMN updated_at SET DEFAULT CURRENT_TIMESTAMP;
+
+COMMIT;
