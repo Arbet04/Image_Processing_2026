@@ -26,3 +26,15 @@ class GenerateResponse(BaseModel):
 class HealthResponse(BaseModel):
     forge_reachable: bool
     forge_url: str
+
+
+class ChatRequest(BaseModel):
+    session_id: str = Field(..., description="รหัสแยกแต่ละบทสนทนา ใช้ user_id หรือสุ่มก็ได้ ใช้จำ context การคุย")
+    message: str = Field(..., min_length=1, description="ข้อความที่ user พิมพ์มา")
+
+
+class ChatResponse(BaseModel):
+    success: bool
+    text: Optional[str] = None
+    image_base64: Optional[str] = None
+    error: Optional[str] = None

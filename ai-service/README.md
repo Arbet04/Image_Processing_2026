@@ -5,17 +5,23 @@
 
 ## โครงสร้างไฟล์
 
-- `main.py` — จุดเริ่มต้น เปิด endpoint `/generate`, `/health`
-- `forge_client.py` — ฟังก์ชันคุยกับ Forge Neo โดยตรง
+- `main.py` — จุดเริ่มต้น เปิด endpoint `/generate`, `/chat`, `/health`
+- `forge_client.py` — ฟังก์ชันคุยกับ Forge Neo โดยตรง (เจนรูป)
+- `gemini_client.py` — ตัวกลาง chatbot ใช้ Gemini ตัดสินใจว่าจะตอบข้อความ
+  หรือสั่ง Forge Neo ให้เจนรูป (Function Calling)
 - `models.py` — กำหนดรูปแบบข้อมูล request/response
-- `config.py` — ตั้งค่า URL และ timeout
+- `config.py` — ตั้งค่า URL, timeout, Gemini API key
 
 ## วิธีติดตั้ง
 
 1. ให้แน่ใจว่า activate `.venv` ของโปรเจกต์แล้ว
 2. ติดตั้ง dependency เพิ่ม (ถ้ายังไม่มี):
    ```
-   pip install fastapi uvicorn httpx
+   pip install fastapi uvicorn httpx python-dotenv google-genai
+   ```
+3. สร้างไฟล์ `.env` ในโฟลเดอร์นี้ (ถูกกันโดย `.gitignore` แล้ว ไม่หลุดขึ้น GitHub):
+   ```
+   GEMINI_API_KEY=คีย์ของคุณจาก https://aistudio.google.com/apikey
    ```
 
 ## วิธีรัน
@@ -43,8 +49,21 @@
   ```
   จะได้ `image_base64` กลับมา เอาไป decode เป็นรูปได้
 
+- `POST /chat` — คุยกับ chatbot ส่ง JSON แบบนี้:
+  ```json
+  {
+    "session_id": "test-user-1",
+    "message": "อยากได้รูปหมาสีดำ"
+  }
+  ```
+  ถ้าเป็นคำถามทั่วไป จะได้ `text` กลับมาเฉยๆ (`image_base64` เป็น `null`)
+  ถ้าเป็นคำขอสร้างรูป จะได้ทั้ง `text` (คำตอบจาก Gemini) และ `image_base64`
+  (รูปจริงจาก Forge Neo) กลับมาพร้อมกัน — ใช้ `session_id` เดียวกันเพื่อให้
+  จำบทสนทนาก่อนหน้าได้ (คนละคนควรใช้คนละ `session_id`)
+
 ## ขั้นต่อไป (ยังไม่ทำในเวอร์ชันนี้)
 
 - เพิ่มระบบ Queue (Celery + Redis) กัน endpoint ค้างเวลามีหลาย request พร้อมกัน
 - เพิ่ม endpoint `/edit` สำหรับ image-to-image
 - เพิ่มการเซฟรูปลงไฟล์ + คืน path แทนการส่ง base64 ตรงๆ (ประหยัด bandwidth เวลารูปใหญ่)
+- ย้าย `_chat_sessions` จาก memory ไปเก็บใน Redis/DB (ตอนนี้ถ้า restart service ประวัติคุยหายหมด)
