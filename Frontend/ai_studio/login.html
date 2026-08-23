@@ -38,7 +38,6 @@
     font-size: 18px;
   }
 
-  /* ── AUTH SCREEN ── */
   .auth-screen {
     height: 100vh;
     width: 100%;
@@ -98,54 +97,6 @@
   .auth-form { display: none; flex-direction: column; gap: 14px; }
   .auth-form.active { display: flex; }
 
-  .forgot-link {
-    align-self: flex-end;
-    background: none;
-    border: none;
-    color: var(--accent2);
-    font-family: inherit;
-    font-size: 12.5px;
-    cursor: pointer;
-    padding: 0;
-    margin-top: -4px;
-  }
-
-  .forgot-link:hover { text-decoration: underline; }
-
-  .back-link {
-    background: none;
-    border: none;
-    color: var(--muted);
-    font-family: inherit;
-    font-size: 12.5px;
-    cursor: pointer;
-    padding: 0;
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    margin-bottom: 4px;
-  }
-
-  .back-link:hover { color: var(--text); }
-
-  .otp-box {
-    background: rgba(124,106,247,.1);
-    border: 1px dashed var(--accent);
-    border-radius: 10px;
-    padding: 12px 14px;
-    text-align: center;
-  }
-
-  .otp-box .otp-label { font-size: 11.5px; color: var(--muted); margin-bottom: 4px; }
-  .otp-box .otp-code {
-    font-size: 22px;
-    font-weight: 700;
-    letter-spacing: 6px;
-    color: var(--accent2);
-  }
-
-  .otp-box .otp-hint { font-size: 11px; color: var(--muted); margin-top: 4px; }
-
   .auth-field { display: flex; flex-direction: column; gap: 6px; }
   .auth-field label { font-size: 12px; color: var(--muted); }
 
@@ -193,7 +144,6 @@
 </head>
 <body>
 
-<!-- ══════════ AUTH SCREEN ══════════ -->
 <div class="auth-screen" id="auth-screen">
   <div class="auth-card">
     <div class="auth-logo">
@@ -212,14 +162,13 @@
     <!-- LOGIN FORM -->
     <form class="auth-form active" id="login-form" onsubmit="handleLogin(event)">
       <div class="auth-field">
-        <label>อีเมล</label>
-        <input type="email" id="login-email" placeholder="you@example.com" required autocomplete="email">
+        <label>ชื่อผู้ใช้งาน (Username)</label>
+        <input type="text" id="login-username" placeholder="เช่น noon3" required autocomplete="username">
       </div>
       <div class="auth-field">
         <label>รหัสผ่าน</label>
         <input type="password" id="login-password" placeholder="••••••••" required autocomplete="current-password">
       </div>
-      <button type="button" class="forgot-link" onclick="showForgotFlow()">ลืมรหัสผ่าน?</button>
       <div class="auth-msg" id="login-msg"></div>
       <button type="submit" class="auth-submit">เข้าสู่ระบบ</button>
     </form>
@@ -227,12 +176,8 @@
     <!-- SIGNUP FORM -->
     <form class="auth-form" id="signup-form" onsubmit="handleSignup(event)">
       <div class="auth-field">
-        <label>ชื่อที่แสดง</label>
-        <input type="text" id="signup-name" placeholder="ชื่อของคุณ" required autocomplete="name">
-      </div>
-      <div class="auth-field">
-        <label>อีเมล</label>
-        <input type="email" id="signup-email" placeholder="you@example.com" required autocomplete="email">
+        <label>ชื่อผู้ใช้งาน (Username)</label>
+        <input type="text" id="signup-name" placeholder="เช่น noon4" required autocomplete="name">
       </div>
       <div class="auth-field">
         <label>รหัสผ่าน</label>
@@ -245,67 +190,18 @@
       <div class="auth-msg" id="signup-msg"></div>
       <button type="submit" class="auth-submit">สร้างบัญชี</button>
     </form>
-
-    <!-- FORGOT PASSWORD — STEP 1: ENTER EMAIL -->
-    <form class="auth-form" id="forgot-email-form" onsubmit="handleForgotSendOtp(event)">
-      <button type="button" class="back-link" onclick="switchAuthTab('login')">← กลับไปเข้าสู่ระบบ</button>
-      <div class="auth-field">
-        <label>กรอกอีเมลที่ใช้สมัครไว้</label>
-        <input type="email" id="forgot-email" placeholder="you@example.com" required autocomplete="email">
-      </div>
-      <div class="auth-msg" id="forgot-email-msg"></div>
-      <button type="submit" class="auth-submit">ส่งรหัส OTP</button>
-    </form>
-
-    <!-- FORGOT PASSWORD — STEP 2: ENTER OTP + NEW PASSWORD -->
-    <form class="auth-form" id="forgot-otp-form" onsubmit="handleForgotReset(event)">
-      <button type="button" class="back-link" onclick="showForgotFlow()">← กลับไปกรอกอีเมล</button>
-      <div class="otp-box">
-        <div class="otp-label">รหัส OTP ของคุณ (จำลอง — ยังไม่ได้ส่งจริง)</div>
-        <div class="otp-code" id="otp-display">------</div>
-        <div class="otp-hint">พิมพ์รหัสนี้ลงในช่องด้านล่างเพื่อยืนยัน</div>
-      </div>
-      <div class="auth-field">
-        <label>กรอกรหัส OTP</label>
-        <input type="text" id="forgot-otp-input" placeholder="6 หลัก" maxlength="6" inputmode="numeric" required>
-      </div>
-      <div class="auth-field">
-        <label>รหัสผ่านใหม่</label>
-        <input type="password" id="forgot-new-password" placeholder="อย่างน้อย 6 ตัวอักษร" required minlength="6" autocomplete="new-password">
-      </div>
-      <div class="auth-field">
-        <label>ยืนยันรหัสผ่านใหม่</label>
-        <input type="password" id="forgot-confirm-password" placeholder="••••••••" required minlength="6" autocomplete="new-password">
-      </div>
-      <div class="auth-msg" id="forgot-otp-msg"></div>
-      <button type="submit" class="auth-submit">รีเซ็ตรหัสผ่าน</button>
-    </form>
   </div>
 </div>
 
 <script>
-  // ── Auth State ──
-  // Demo-only client-side auth using localStorage. There is no backend here,
-  // so passwords are stored in plain text in the browser — fine for local
-  // testing, but swap this for real server-side auth before shipping anywhere.
-  // NOTE: this session/user storage is shared (same keys) with chat.html and
-  // gen.html, so logging in here also logs the user into those pages.
-  const USERS_KEY = 'aistudio_users';
   const SESSION_KEY = 'aistudio_session';
-
-  function getUsers() {
-    try { return JSON.parse(localStorage.getItem(USERS_KEY)) || []; }
-    catch { return []; }
-  }
-
-  function saveUsers(users) {
-    localStorage.setItem(USERS_KEY, JSON.stringify(users));
-  }
 
   function setAuthMsg(id, text, type) {
     const el = document.getElementById(id);
-    el.textContent = text;
-    el.className = 'auth-msg ' + (type || '');
+    if (el) {
+      el.textContent = text;
+      el.className = 'auth-msg ' + (type || '');
+    }
   }
 
   function switchAuthTab(tab) {
@@ -313,93 +209,13 @@
     document.getElementById('auth-tab-signup').classList.toggle('active', tab === 'signup');
     document.getElementById('login-form').classList.toggle('active', tab === 'login');
     document.getElementById('signup-form').classList.toggle('active', tab === 'signup');
-    document.getElementById('forgot-email-form').classList.remove('active');
-    document.getElementById('forgot-otp-form').classList.remove('active');
-    document.getElementById('auth-tabs').style.display = 'flex';
     setAuthMsg('login-msg', '');
     setAuthMsg('signup-msg', '');
   }
 
-  // ── Forgot Password (mock OTP, no real backend/email) ──
-  let pendingResetOtp = null;
-  let pendingResetEmail = null;
-
-  function showForgotFlow() {
-    document.getElementById('auth-tabs').style.display = 'none';
-    document.getElementById('login-form').classList.remove('active');
-    document.getElementById('signup-form').classList.remove('active');
-    document.getElementById('forgot-otp-form').classList.remove('active');
-    document.getElementById('forgot-email-form').classList.add('active');
-    setAuthMsg('forgot-email-msg', '');
-    document.getElementById('forgot-email').value = document.getElementById('login-email').value || '';
-  }
-
-  function handleForgotSendOtp(e) {
-    e.preventDefault();
-    const email = document.getElementById('forgot-email').value.trim().toLowerCase();
-    const users = getUsers();
-    const user = users.find(u => u.email === email);
-
-    if (!user) {
-      setAuthMsg('forgot-email-msg', '❌ ไม่พบบัญชีที่ใช้อีเมลนี้', 'error');
-      return;
-    }
-
-    // Generate a mock 6-digit OTP and just display it — there is no email/SMS
-    // service wired up, so "sending" it means showing it on screen.
-    pendingResetOtp = String(Math.floor(100000 + Math.random() * 900000));
-    pendingResetEmail = email;
-
-    document.getElementById('otp-display').textContent = pendingResetOtp;
-    document.getElementById('forgot-otp-input').value = '';
-    document.getElementById('forgot-new-password').value = '';
-    document.getElementById('forgot-confirm-password').value = '';
-    setAuthMsg('forgot-otp-msg', '');
-
-    document.getElementById('forgot-email-form').classList.remove('active');
-    document.getElementById('forgot-otp-form').classList.add('active');
-  }
-
-  function handleForgotReset(e) {
-    e.preventDefault();
-    const otpInput = document.getElementById('forgot-otp-input').value.trim();
-    const newPassword = document.getElementById('forgot-new-password').value;
-    const confirmPassword = document.getElementById('forgot-confirm-password').value;
-
-    if (otpInput !== pendingResetOtp) {
-      setAuthMsg('forgot-otp-msg', '❌ รหัส OTP ไม่ถูกต้อง', 'error');
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      setAuthMsg('forgot-otp-msg', 'รหัสผ่านใหม่ไม่ตรงกัน', 'error');
-      return;
-    }
-    if (newPassword.length < 6) {
-      setAuthMsg('forgot-otp-msg', 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร', 'error');
-      return;
-    }
-
-    const users = getUsers();
-    const user = users.find(u => u.email === pendingResetEmail);
-    if (!user) {
-      setAuthMsg('forgot-otp-msg', '❌ เกิดข้อผิดพลาด กรุณาลองใหม่', 'error');
-      return;
-    }
-
-    user.password = newPassword;
-    saveUsers(users);
-
-    pendingResetOtp = null;
-    pendingResetEmail = null;
-
-    setAuthMsg('login-msg', '✅ ตั้งรหัสผ่านใหม่สำเร็จแล้ว กรุณาเข้าสู่ระบบ', 'success');
-    switchAuthTab('login');
-  }
-
-  function handleSignup(e) {
+  async function handleSignup(e) {
     e.preventDefault();
     const name = document.getElementById('signup-name').value.trim();
-    const email = document.getElementById('signup-email').value.trim().toLowerCase();
     const password = document.getElementById('signup-password').value;
     const confirm = document.getElementById('signup-confirm').value;
 
@@ -407,70 +223,58 @@
       setAuthMsg('signup-msg', 'รหัสผ่านไม่ตรงกัน', 'error');
       return;
     }
-    if (password.length < 6) {
-      setAuthMsg('signup-msg', 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร', 'error');
-      return;
+
+    try {
+      const response = await fetch('http://10.192.0.121:5000/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: name, password: password })
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setAuthMsg('signup-msg', '✅ สร้างบัญชีสำเร็จ! กรุณาเข้าสู่ระบบ', 'success');
+        setTimeout(() => {
+          switchAuthTab('login');
+          document.getElementById('login-username').value = name;
+          document.getElementById('login-password').value = '';
+        }, 1000);
+      } else {
+        setAuthMsg('signup-msg', '❌ ' + (data.message || 'สมัครสมาชิกไม่สำเร็จ'), 'error');
+      }
+    } catch (error) {
+      setAuthMsg('signup-msg', '❌ ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ Backend ได้', 'error');
     }
-
-    const users = getUsers();
-    if (users.some(u => u.email === email)) {
-      setAuthMsg('signup-msg', 'อีเมลนี้ถูกใช้สมัครไปแล้ว', 'error');
-      return;
-    }
-
-    users.push({ name, email, password });
-    saveUsers(users);
-
-    setAuthMsg(
-      'signup-msg',
-      '✅ สร้างบัญชีสำเร็จ! กรุณาเข้าสู่ระบบ',
-      'success'
-    );
-
-    setTimeout(() => {
-      switchAuthTab('login');
-
-      document.getElementById('login-email').value = email;
-      document.getElementById('login-password').value = '';
-    }, 1000);
   }
 
-  function handleLogin(e) {
+  async function handleLogin(e) {
     e.preventDefault();
-    const email = document.getElementById('login-email').value.trim().toLowerCase();
+    const username = document.getElementById('login-username').value.trim();
     const password = document.getElementById('login-password').value;
 
-    const users = getUsers();
-    const user = users.find(u => u.email === email && u.password === password);
-
-    if (!user) {
-      setAuthMsg('login-msg', '❌ อีเมลหรือรหัสผ่านไม่ถูกต้อง', 'error');
-      return;
-    }
-
-    setAuthMsg('login-msg', '', '');
-    startSession({ name: user.name, email: user.email });
-  }
-
-  function startSession(user) {
-    localStorage.setItem(SESSION_KEY, JSON.stringify(user));
-    // Logged in → go to the chat page (chat.html and gen.html both read
-    // this same session key, so no need to log in again there).
-    window.location.href = 'index.html';
-  }
-
-  function checkSession() {
     try {
-      const session = JSON.parse(localStorage.getItem(SESSION_KEY));
-      if (session && session.email) {
-        // Already logged in — skip straight to the app.
-        window.location.href = 'index.html';
-        return;
-      }
-    } catch {}
-  }
+      const response = await fetch('http://10.192.0.121:5000/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: username, password: password })
+      });
 
-  //checkSession();
+      const data = await response.json();
+
+      if (response.ok) {
+        setAuthMsg('login-msg', '✅ เข้าสู่ระบบสำเร็จ', 'success');
+        localStorage.setItem(SESSION_KEY, JSON.stringify(data));
+        setTimeout(() => {
+          window.location.href = 'index.html';
+        }, 500);
+      } else {
+        setAuthMsg('login-msg', '❌ ' + (data.message || 'ชื่อผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง'), 'error');
+      }
+    } catch (error) {
+      setAuthMsg('login-msg', '❌ ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ Backend ได้', 'error');
+    }
+  }
 </script>
 </body>
 </html>
