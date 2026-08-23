@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Studio — เข้าสู่ระบบ</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Noto+Sans+Thai:wght@300;400;500;600&display=swap');
+
+  :root {
+    --bg: #0f0f13;
+    --surface: #18181f;
+    --surface2: #22222c;
+    --border: #2e2e3a;
+    --accent: #7c6af7;
+    --accent2: #a78bfa;
+    --text: #e8e8f0;
+    --muted: #6b6b80;
+    --success: #34d399;
+    --radius: 14px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Inter', 'Noto Sans Thai', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  .logo {
+    width: 36px; height: 36px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+  }
+
+  /* ── AUTH SCREEN ── */
+  .auth-screen {
+    height: 100vh;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: radial-gradient(circle at 30% 20%, rgba(124,106,247,.12), transparent 55%), var(--bg);
+    padding: 20px;
+  }
+
+  .auth-card {
+    width: 100%;
+    max-width: 380px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    padding: 32px 28px;
+    box-shadow: 0 20px 60px rgba(0,0,0,.35);
+  }
+
+  .auth-logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+
+  .auth-logo .logo { width: 40px; height: 40px; font-size: 20px; }
+  .auth-logo h1 { font-size: 17px; font-weight: 600; }
+  .auth-logo p  { font-size: 12px; color: var(--muted); }
+
+  .auth-tabs {
+    display: flex;
+    gap: 4px;
+    background: var(--bg);
+    border-radius: 10px;
+    padding: 4px;
+    margin-bottom: 22px;
+  }
+
+  .auth-tab {
+    flex: 1;
+    padding: 8px;
+    border-radius: 8px;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    font-size: 13px;
+    font-family: inherit;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all .2s;
+  }
+
+  .auth-tab.active { background: var(--surface2); color: var(--text); }
+
+  .auth-form { display: none; flex-direction: column; gap: 14px; }
+  .auth-form.active { display: flex; }
+
+  .forgot-link {
+    align-self: flex-end;
+    background: none;
+    border: none;
+    color: var(--accent2);
+    font-family: inherit;
+    font-size: 12.5px;
+    cursor: pointer;
+    padding: 0;
+    margin-top: -4px;
+  }
+
+  .forgot-link:hover { text-decoration: underline; }
+
+  .back-link {
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-family: inherit;
+    font-size: 12.5px;
+    cursor: pointer;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-bottom: 4px;
+  }
+
+  .back-link:hover { color: var(--text); }
+
+  .otp-box {
+    background: rgba(124,106,247,.1);
+    border: 1px dashed var(--accent);
+    border-radius: 10px;
+    padding: 12px 14px;
+    text-align: center;
+  }
+
+  .otp-box .otp-label { font-size: 11.5px; color: var(--muted); margin-bottom: 4px; }
+  .otp-box .otp-code {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: 6px;
+    color: var(--accent2);
+  }
+
+  .otp-box .otp-hint { font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+  .auth-field { display: flex; flex-direction: column; gap: 6px; }
+  .auth-field label { font-size: 12px; color: var(--muted); }
+
+  .auth-field input {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 14px;
+    padding: 11px 14px;
+    outline: none;
+    transition: border .2s;
+  }
+
+  .auth-field input:focus { border-color: var(--accent); }
+  .auth-field input::placeholder { color: var(--muted); }
+
+  .auth-submit {
+    margin-top: 4px;
+    padding: 12px;
+    border-radius: 12px;
+    border: none;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: #fff;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity .2s, transform .1s;
+  }
+
+  .auth-submit:hover { opacity: .88; }
+  .auth-submit:active { transform: scale(.99); }
+
+  .auth-msg {
+    font-size: 12.5px;
+    text-align: center;
+    min-height: 16px;
+  }
+
+  .auth-msg.error { color: #f87171; }
+  .auth-msg.success { color: var(--success); }
+</style>
+</head>
+<body>
+
+<!-- ══════════ AUTH SCREEN ══════════ -->
+<div class="auth-screen" id="auth-screen">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <div class="logo">🤖</div>
+      <div>
+        <h1>AI Studio</h1>
+        <p>Chat · Image Generation</p>
+      </div>
+    </div>
+
+    <div class="auth-tabs" id="auth-tabs">
+      <button class="auth-tab active" id="auth-tab-login" onclick="switchAuthTab('login')">เข้าสู่ระบบ</button>
+      <button class="auth-tab" id="auth-tab-signup" onclick="switchAuthTab('signup')">สมัครสมาชิก</button>
+    </div>
+
+    <!-- LOGIN FORM -->
+    <form class="auth-form active" id="login-form" onsubmit="handleLogin(event)">
+      <div class="auth-field">
+        <label>อีเมล</label>
+        <input type="email" id="login-email" placeholder="you@example.com" required autocomplete="email">
+      </div>
+      <div class="auth-field">
+        <label>รหัสผ่าน</label>
+        <input type="password" id="login-password" placeholder="••••••••" required autocomplete="current-password">
+      </div>
+      <button type="button" class="forgot-link" onclick="showForgotFlow()">ลืมรหัสผ่าน?</button>
+      <div class="auth-msg" id="login-msg"></div>
+      <button type="submit" class="auth-submit">เข้าสู่ระบบ</button>
+    </form>
+
+    <!-- SIGNUP FORM -->
+    <form class="auth-form" id="signup-form" onsubmit="handleSignup(event)">
+      <div class="auth-field">
+        <label>ชื่อที่แสดง</label>
+        <input type="text" id="signup-name" placeholder="ชื่อของคุณ" required autocomplete="name">
+      </div>
+      <div class="auth-field">
+        <label>อีเมล</label>
+        <input type="email" id="signup-email" placeholder="you@example.com" required autocomplete="email">
+      </div>
+      <div class="auth-field">
+        <label>รหัสผ่าน</label>
+        <input type="password" id="signup-password" placeholder="อย่างน้อย 6 ตัวอักษร" required minlength="6" autocomplete="new-password">
+      </div>
+      <div class="auth-field">
+        <label>ยืนยันรหัสผ่าน</label>
+        <input type="password" id="signup-confirm" placeholder="••••••••" required minlength="6" autocomplete="new-password">
+      </div>
+      <div class="auth-msg" id="signup-msg"></div>
+      <button type="submit" class="auth-submit">สร้างบัญชี</button>
+    </form>
+
+    <!-- FORGOT PASSWORD — STEP 1: ENTER EMAIL -->
+    <form class="auth-form" id="forgot-email-form" onsubmit="handleForgotSendOtp(event)">
+      <button type="button" class="back-link" onclick="switchAuthTab('login')">← กลับไปเข้าสู่ระบบ</button>
+      <div class="auth-field">
+        <label>กรอกอีเมลที่ใช้สมัครไว้</label>
+        <input type="email" id="forgot-email" placeholder="you@example.com" required autocomplete="email">
+      </div>
+      <div class="auth-msg" id="forgot-email-msg"></div>
+      <button type="submit" class="auth-submit">ส่งรหัส OTP</button>
+    </form>
+
+    <!-- FORGOT PASSWORD — STEP 2: ENTER OTP + NEW PASSWORD -->
+    <form class="auth-form" id="forgot-otp-form" onsubmit="handleForgotReset(event)">
+      <button type="button" class="back-link" onclick="showForgotFlow()">← กลับไปกรอกอีเมล</button>
+      <div class="otp-box">
+        <div class="otp-label">รหัส OTP ของคุณ (จำลอง — ยังไม่ได้ส่งจริง)</div>
+        <div class="otp-code" id="otp-display">------</div>
+        <div class="otp-hint">พิมพ์รหัสนี้ลงในช่องด้านล่างเพื่อยืนยัน</div>
+      </div>
+      <div class="auth-field">
+        <label>กรอกรหัส OTP</label>
+        <input type="text" id="forgot-otp-input" placeholder="6 หลัก" maxlength="6" inputmode="numeric" required>
+      </div>
+      <div class="auth-field">
+        <label>รหัสผ่านใหม่</label>
+        <input type="password" id="forgot-new-password" placeholder="อย่างน้อย 6 ตัวอักษร" required minlength="6" autocomplete="new-password">
+      </div>
+      <div class="auth-field">
+        <label>ยืนยันรหัสผ่านใหม่</label>
+        <input type="password" id="forgot-confirm-password" placeholder="••••••••" required minlength="6" autocomplete="new-password">
+      </div>
+      <div class="auth-msg" id="forgot-otp-msg"></div>
+      <button type="submit" class="auth-submit">รีเซ็ตรหัสผ่าน</button>
+    </form>
+  </div>
+</div>
+
+<script>
+  // ── Auth State ──
+  // Demo-only client-side auth using localStorage. There is no backend here,
+  // so passwords are stored in plain text in the browser — fine for local
+  // testing, but swap this for real server-side auth before shipping anywhere.
+  // NOTE: this session/user storage is shared (same keys) with chat.html and
+  // gen.html, so logging in here also logs the user into those pages.
+  const USERS_KEY = 'aistudio_users';
+  const SESSION_KEY = 'aistudio_session';
+
+  function getUsers() {
+    try { return JSON.parse(localStorage.getItem(USERS_KEY)) || []; }
+    catch { return []; }
+  }
+
+  function saveUsers(users) {
+    localStorage.setItem(USERS_KEY, JSON.stringify(users));
+  }
+
+  function setAuthMsg(id, text, type) {
+    const el = document.getElementById(id);
+    el.textContent = text;
+    el.className = 'auth-msg ' + (type || '');
+  }
+
+  function switchAuthTab(tab) {
+    document.getElementById('auth-tab-login').classList.toggle('active', tab === 'login');
+    document.getElementById('auth-tab-signup').classList.toggle('active', tab === 'signup');
+    document.getElementById('login-form').classList.toggle('active', tab === 'login');
+    document.getElementById('signup-form').classList.toggle('active', tab === 'signup');
+    document.getElementById('forgot-email-form').classList.remove('active');
+    document.getElementById('forgot-otp-form').classList.remove('active');
+    document.getElementById('auth-tabs').style.display = 'flex';
+    setAuthMsg('login-msg', '');
+    setAuthMsg('signup-msg', '');
+  }
+
+  // ── Forgot Password (mock OTP, no real backend/email) ──
+  let pendingResetOtp = null;
+  let pendingResetEmail = null;
+
+  function showForgotFlow() {
+    document.getElementById('auth-tabs').style.display = 'none';
+    document.getElementById('login-form').classList.remove('active');
+    document.getElementById('signup-form').classList.remove('active');
+    document.getElementById('forgot-otp-form').classList.remove('active');
+    document.getElementById('forgot-email-form').classList.add('active');
+    setAuthMsg('forgot-email-msg', '');
+    document.getElementById('forgot-email').value = document.getElementById('login-email').value || '';
+  }
+
+  function handleForgotSendOtp(e) {
+    e.preventDefault();
+    const email = document.getElementById('forgot-email').value.trim().toLowerCase();
+    const users = getUsers();
+    const user = users.find(u => u.email === email);
+
+    if (!user) {
+      setAuthMsg('forgot-email-msg', '❌ ไม่พบบัญชีที่ใช้อีเมลนี้', 'error');
+      return;
+    }
+
+    // Generate a mock 6-digit OTP and just display it — there is no email/SMS
+    // service wired up, so "sending" it means showing it on screen.
+    pendingResetOtp = String(Math.floor(100000 + Math.random() * 900000));
+    pendingResetEmail = email;
+
+    document.getElementById('otp-display').textContent = pendingResetOtp;
+    document.getElementById('forgot-otp-input').value = '';
+    document.getElementById('forgot-new-password').value = '';
+    document.getElementById('forgot-confirm-password').value = '';
+    setAuthMsg('forgot-otp-msg', '');
+
+    document.getElementById('forgot-email-form').classList.remove('active');
+    document.getElementById('forgot-otp-form').classList.add('active');
+  }
+
+  function handleForgotReset(e) {
+    e.preventDefault();
+    const otpInput = document.getElementById('forgot-otp-input').value.trim();
+    const newPassword = document.getElementById('forgot-new-password').value;
+    const confirmPassword = document.getElementById('forgot-confirm-password').value;
+
+    if (otpInput !== pendingResetOtp) {
+      setAuthMsg('forgot-otp-msg', '❌ รหัส OTP ไม่ถูกต้อง', 'error');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setAuthMsg('forgot-otp-msg', 'รหัสผ่านใหม่ไม่ตรงกัน', 'error');
+      return;
+    }
+    if (newPassword.length < 6) {
+      setAuthMsg('forgot-otp-msg', 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร', 'error');
+      return;
+    }
+
+    const users = getUsers();
+    const user = users.find(u => u.email === pendingResetEmail);
+    if (!user) {
+      setAuthMsg('forgot-otp-msg', '❌ เกิดข้อผิดพลาด กรุณาลองใหม่', 'error');
+      return;
+    }
+
+    user.password = newPassword;
+    saveUsers(users);
+
+    pendingResetOtp = null;
+    pendingResetEmail = null;
+
+    setAuthMsg('login-msg', '✅ ตั้งรหัสผ่านใหม่สำเร็จแล้ว กรุณาเข้าสู่ระบบ', 'success');
+    switchAuthTab('login');
+  }
+
+  function handleSignup(e) {
+    e.preventDefault();
+    const name = document.getElementById('signup-name').value.trim();
+    const email = document.getElementById('signup-email').value.trim().toLowerCase();
+    const password = document.getElementById('signup-password').value;
+    const confirm = document.getElementById('signup-confirm').value;
+
+    if (password !== confirm) {
+      setAuthMsg('signup-msg', 'รหัสผ่านไม่ตรงกัน', 'error');
+      return;
+    }
+    if (password.length < 6) {
+      setAuthMsg('signup-msg', 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร', 'error');
+      return;
+    }
+
+    const users = getUsers();
+    if (users.some(u => u.email === email)) {
+      setAuthMsg('signup-msg', 'อีเมลนี้ถูกใช้สมัครไปแล้ว', 'error');
+      return;
+    }
+
+    users.push({ name, email, password });
+    saveUsers(users);
+    setAuthMsg('signup-msg', '✅ สร้างบัญชีสำเร็จ! กำลังเข้าสู่ระบบ...', 'success');
+
+    setTimeout(() => startSession({ name, email }), 500);
+  }
+
+  function handleLogin(e) {
+    e.preventDefault();
+    const email = document.getElementById('login-email').value.trim().toLowerCase();
+    const password = document.getElementById('login-password').value;
+
+    const users = getUsers();
+    const user = users.find(u => u.email === email && u.password === password);
+
+    if (!user) {
+      setAuthMsg('login-msg', '❌ อีเมลหรือรหัสผ่านไม่ถูกต้อง', 'error');
+      return;
+    }
+
+    setAuthMsg('login-msg', '', '');
+    startSession({ name: user.name, email: user.email });
+  }
+
+  function startSession(user) {
+    localStorage.setItem(SESSION_KEY, JSON.stringify(user));
+    // Logged in → go to the chat page (chat.html and gen.html both read
+    // this same session key, so no need to log in again there).
+    window.location.href = 'chat.html';
+  }
+
+  function checkSession() {
+    try {
+      const session = JSON.parse(localStorage.getItem(SESSION_KEY));
+      if (session && session.email) {
+        // Already logged in — skip straight to the app.
+        window.location.href = 'chat.html';
+        return;
+      }
+    } catch {}
+  }
+
+  checkSession();
+</script>
+</body>
+</html>
