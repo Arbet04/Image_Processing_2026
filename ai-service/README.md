@@ -5,7 +5,10 @@
 
 ## โครงสร้างไฟล์
 
-- `main.py` — จุดเริ่มต้น เปิด endpoint `/generate`, `/chat`, `/health`
+- `main.py` — จุดเริ่มต้น เปิด endpoint `/generate`, `/chat`, `/health`, `/queue/status`
+- `queue_manager.py` — คิวง่ายๆ ด้วย `asyncio.Queue` เก็บงานสร้างรูปทุกงาน (ทั้งจาก
+  `/generate` ตรงๆ และจาก chatbot) ให้ทำทีละงานเรียงคิว ไม่ให้ Forge Neo โดนยิง
+  พร้อมกันหลายงาน — ไม่ต้องติดตั้ง Redis/Celery เพิ่ม
 - `forge_client.py` — ฟังก์ชันคุยกับ Forge Neo โดยตรง (เจนรูป)
 - `gemini_client.py` — ตัวกลาง chatbot ใช้ Gemini ตัดสินใจว่าจะตอบข้อความ
   หรือสั่ง Forge Neo ให้เจนรูป (Function Calling)
@@ -63,7 +66,24 @@
 
 ## ขั้นต่อไป (ยังไม่ทำในเวอร์ชันนี้)
 
-- เพิ่มระบบ Queue (Celery + Redis) กัน endpoint ค้างเวลามีหลาย request พร้อมกัน
-- เพิ่ม endpoint `/edit` สำหรับ image-to-image
-- เพิ่มการเซฟรูปลงไฟล์ + คืน path แทนการส่ง base64 ตรงๆ (ประหยัด bandwidth เวลารูปใหญ่)
-- ย้าย `_chat_sessions` จาก memory ไปเก็บใน Redis/DB (ตอนนี้ถ้า restart service ประวัติคุยหายหมด)
+- ~~เพิ่มระบบ Queue~~ ✅ ทำแล้ว (ดู `queue_manager.py` — แบบ `asyncio.Queue` ในตัว
+  ไม่ต้องใช้ Redis/Celery เหมาะกับ GPU เดียวที่รับงานได้ทีละ 1 อยู่แล้ว)
+- เพิ่ม endpoint `/edit` สำหรับ image-to-image (ฝั่ง Frontend จะทำ filter แบบ
+  client-side เองไปก่อน — ยังไม่ต้องทำส่วนนี้จนกว่าจะตกลงกับทีมว่าจำเป็น)
+- เพิ่มการเซฟรูปลงไฟล์ + คืน path แทนการส่ง base64 ตรงๆ (รอ Backend ยืนยัน
+  รูปแบบ response ที่ต้องการก่อน — ตอนนี้ Backend คาดหวัง `image_url` แต่เรายัง
+  ส่ง `image_base64` อยู่)
+- ย้าย `_chat_sessions` จาก memory ไปเก็บใน Redis/DB (ตอนนี้ถ้า restart service
+  ประวัติคุยหายหมด)
+- เพิ่ม field เลือก checkpoint/LoRA ใน `GenerateRequest`
+
+## หมายเหตุเรื่อง Queue
+
+- ตอนนี้ `/generate` ยัง **รอจนกว่าจะเสร็จค่อยตอบกลับ** เหมือนเดิมทุกประการ
+  (ไม่ต้องแก้อะไรฝั่ง Backend เลย) การมี queue แค่รับประกันว่าไม่มี 2 งานยิงไปหา
+  Forge Neo พร้อมกัน — ถ้ามีคนกดพร้อมกันหลายคน คนหลังจะแค่ **รอคิวนานขึ้น**
+  ไม่ error
+- ดูจำนวนงานที่รอคิวอยู่ได้ที่ `GET /queue/status`
+- ถ้ามีคนรอคิวนานจนเกิน timeout ของฝั่ง Backend (`requests.post(..., timeout=120)`
+  ใน `ai_client.py`) จะเจอ error timeout ได้ ถ้าคนใช้งานพร้อมกันเยอะขึ้นในอนาคต
+  อาจต้องคุยกับทีมเรื่องเพิ่มค่า timeout

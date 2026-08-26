@@ -15,8 +15,9 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from models import GenerateRequest, GenerateResponse, HealthResponse, ChatRequest, ChatResponse
-from forge_client import generate_image, check_health, ForgeConnectionError, ForgeGenerationError
+from forge_client import check_health, ForgeConnectionError, ForgeGenerationError
 from gemini_client import handle_chat_message
+from queue_manager import start_worker, enqueue_generate, queue_size
 from config import FORGE_BASE_URL
 
 app = FastAPI(
@@ -35,6 +36,12 @@ app.add_middleware(
 )
 
 
+@app.on_event("startup")
+async def on_startup():
+    # เริ่ม worker ตัวเดียวไว้คอยดึงงานจากคิวมาทำทีละงาน
+    start_worker()
+
+
 @app.get("/health", response_model=HealthResponse)
 async def health():
     """เช็คว่า service นี้เชื่อม Forge Neo ได้อยู่ไหม ใช้ debug ตอนอะไรๆ ไม่ทำงาน"""
@@ -46,11 +53,11 @@ async def health():
 async def generate(req: GenerateRequest):
     """
     Endpoint หลักสำหรับสร้างรูปจาก prompt
-    ตอนนี้เป็นแบบ synchronous (รอจนเสร็จค่อยตอบกลับ)
-    ขั้นต่อไปจะเปลี่ยนเป็นระบบ Queue เพื่อไม่ให้ค้างตอนมีหลาย request พร้อมกัน
+    รูปแบบ request/response เหมือนเดิมทุกอย่าง ไม่มีอะไรเปลี่ยนสำหรับฝั่ง Backend —
+    แค่ข้างในตอนนี้ต่อคิวก่อนยิงหา Forge Neo กันงานชนกันเวลามีหลาย request พร้อมกัน
     """
     try:
-        result = await generate_image(req)
+        result = await enqueue_generate(req)
         return GenerateResponse(
             success=True,
             image_base64=result["image_base64"],
@@ -64,6 +71,12 @@ async def generate(req: GenerateRequest):
     except ForgeGenerationError as e:
         # Forge Neo เปิดอยู่แต่ generate ไม่สำเร็จ — ส่ง 502 (Bad Gateway) กลับไป
         raise HTTPException(status_code=502, detail=str(e))
+
+
+@app.get("/queue/status")
+async def queue_status():
+    """ดูจำนวนงานที่ยังรอคิวอยู่ตอนนี้ ไว้ debug เวลาสงสัยว่าทำไมช้า"""
+    return {"pending_jobs": queue_size()}
 
 
 @app.post("/chat", response_model=ChatResponse)

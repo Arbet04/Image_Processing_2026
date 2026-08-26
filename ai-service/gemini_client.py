@@ -16,7 +16,8 @@ from google import genai
 from google.genai import types
 
 from config import GEMINI_API_KEY, GEMINI_MODEL
-from forge_client import generate_image, ForgeConnectionError, ForgeGenerationError
+from queue_manager import enqueue_generate
+from forge_client import ForgeConnectionError, ForgeGenerationError
 from models import GenerateRequest
 
 _client = genai.Client(api_key=GEMINI_API_KEY)
@@ -81,7 +82,7 @@ async def handle_chat_message(session_id: str, message: str) -> dict:
 
         try:
             forge_req = GenerateRequest(prompt=image_prompt)
-            image_result = await generate_image(forge_req)
+            image_result = await enqueue_generate(forge_req)
 
         except (ForgeConnectionError, ForgeGenerationError) as e:
             # สร้างรูปไม่สำเร็จ — บอก Gemini ให้ช่วยตอบ user อย่างสุภาพแทนที่จะโยน error ดิบๆ
