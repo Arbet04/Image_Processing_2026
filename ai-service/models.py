@@ -1,6 +1,7 @@
 """
-Pydantic models — ใช้กำหนดรูปแบบข้อมูลที่ API รับเข้า/ส่งออก
-FastAPI จะ validate ให้อัตโนมัติ ถ้าฟิลด์ไม่ตรง type จะ error ก่อนเข้าโค้ดเราเอง
+Pydantic models — กำหนดว่าข้อมูลที่ API รับเข้า/ส่งออกต้องมีหน้าตายังไง
+FastAPI ใช้ตรงนี้ตรวจสอบ (validate) ข้อมูลให้อัตโนมัติ ถ้า client ส่งฟิลด์ผิด type
+หรือขาดฟิลด์ที่จำเป็น จะ error ทันทีก่อนเข้าโค้ดของเราเองเลย ไม่ต้องเขียน if เช็คเอง
 """
 
 from pydantic import BaseModel, Field
@@ -8,6 +9,10 @@ from typing import Optional
 
 
 class GenerateRequest(BaseModel):
+    """
+    รูปแบบข้อมูลที่ client (เช่น Flask backend) ต้องส่งมาตอนขอสร้างรูป
+    ใช้ใน: main.py -> endpoint POST /generate
+    """
     prompt: str = Field(..., min_length=1, description="คำอธิบายรูปที่ต้องการสร้าง")
     negative_prompt: str = Field("", description="สิ่งที่ไม่ต้องการให้ปรากฏในรูป")
     steps: int = Field(20, ge=1, le=150, description="จำนวน sampling steps")
@@ -17,6 +22,10 @@ class GenerateRequest(BaseModel):
 
 
 class GenerateResponse(BaseModel):
+    """
+    รูปแบบข้อมูลที่ตอบกลับไปหลังสร้างรูปเสร็จ (หรือ error)
+    ใช้ใน: main.py -> endpoint POST /generate
+    """
     success: bool
     image_base64: Optional[str] = None
     elapsed_seconds: Optional[float] = None
@@ -24,17 +33,9 @@ class GenerateResponse(BaseModel):
 
 
 class HealthResponse(BaseModel):
+    """
+    รูปแบบข้อมูลที่ตอบกลับตอนเช็คว่า Forge Neo ยังเชื่อมต่ออยู่ไหม
+    ใช้ใน: main.py -> endpoint GET /health
+    """
     forge_reachable: bool
     forge_url: str
-
-
-class ChatRequest(BaseModel):
-    session_id: str = Field(..., description="รหัสแยกแต่ละบทสนทนา ใช้ user_id หรือสุ่มก็ได้ ใช้จำ context การคุย")
-    message: str = Field(..., min_length=1, description="ข้อความที่ user พิมพ์มา")
-
-
-class ChatResponse(BaseModel):
-    success: bool
-    text: Optional[str] = None
-    image_base64: Optional[str] = None
-    error: Optional[str] = None

@@ -1,64 +1,37 @@
 """
-Queue Manager — คิวง่ายๆ ด้วย asyncio ล้วนๆ ไม่ต้องติดตั้ง Redis/Celery
-========================================================================
-ทำไมต้องมีไฟล์นี้: GPU เครื่องเรารับงานสร้างรูปได้ทีละ 1 งานเท่านั้นอยู่แล้ว
-ถ้ามีหลาย request ยิงเข้ามาพร้อมกัน (เช่น 3 คนกด Generate พร้อมกัน) แล้วปล่อยให้
-ยิงไปหา Forge Neo พร้อมกันตรงๆ อาจชนกันหรือทำให้ Forge Neo error ได้
+Queue Manager — ต่อคิวงานสร้างรูปด้วย asyncio.Semaphore
+============================================================
+ทำไมต้องมีไฟล์นี้: GPU เครื่องเรารับงานสร้างรูปได้ทีละ 1 งานเท่านั้น ถ้าปล่อยให้
+หลาย request ยิงไปหา Forge Neo พร้อมกันตรงๆ (ไม่ผ่านไฟล์นี้) อาจชนกันหรือทำให้
+Forge Neo error ได้ ไฟล์นี้ทำหน้าที่บังคับให้ทุกงานต้อง "รอคิว" ก่อนเริ่มทำงานจริง
 
-ไฟล์นี้ทำให้ทุก request ต้อง "ต่อคิว" เข้ามาก่อน แล้วมี worker ตัวเดียวคอยดึงงาน
-ออกมาทำทีละงานเรียงตามลำดับ (FIFO) — request ที่มาทีหลังแค่รอนานขึ้น ไม่ error
+หลักการทำงาน (เข้าใจง่ายๆ): Semaphore(1) เหมือนกุญแจห้องน้ำที่มีอยู่ใบเดียว
+คนแรกที่มาถึงหยิบกุญแจไปเข้าห้องน้ำ (เริ่ม generate) คนที่มาทีหลังต้องยืนรอ
+หน้าห้องจนกว่าคนแรกจะออกมาคืนกุญแจ (generate เสร็จ) ถึงจะเข้าไปทำต่อได้
 """
 
 import asyncio
 from models import GenerateRequest
 from forge_client import generate_image
 
-# คิวเก็บงานที่รออยู่ — แต่ละ item คือ (request, future ที่จะเก็บผลลัพธ์)
-_job_queue: asyncio.Queue = asyncio.Queue()
-_worker_started = False
-
-
-async def _worker():
-    """
-    วนลูปตลอดอายุของโปรแกรม ดึงงานจากคิวออกมาทำทีละงาน
-    เพราะมีแค่ worker เดียว จึงรับประกันว่าไม่มีทาง 2 งานยิงไปหา Forge Neo
-    พร้อมกันได้เลย
-    """
-    while True:
-        req, future = await _job_queue.get()
-        try:
-            result = await generate_image(req)
-            if not future.cancelled():
-                future.set_result(result)
-        except Exception as e:
-            # โยน exception เดิมกลับไปให้โค้ดที่เรียก enqueue_generate() จัดการ
-            # เหมือนกับเรียก generate_image() ตรงๆ ทุกประการ แค่ผ่านคิวก่อน
-            if not future.cancelled():
-                future.set_exception(e)
-        finally:
-            _job_queue.task_done()
-
-
-def start_worker():
-    """เรียกครั้งเดียวตอน FastAPI เริ่มทำงาน (ดูใน main.py, startup event)"""
-    global _worker_started
-    if not _worker_started:
-        asyncio.create_task(_worker())
-        _worker_started = True
+# ค่า 1 หมายถึง "อนุญาตให้มีแค่ 1 งานทำพร้อมกันได้เท่านั้น" งานที่มาทีหลัง
+# จะถูกทำให้รอโดยอัตโนมัติที่บรรทัด "async with" ด้านล่าง ไม่ต้องเขียน logic คิวเอง
+_generation_lock = asyncio.Semaphore(1)
 
 
 async def enqueue_generate(req: GenerateRequest) -> dict:
     """
-    ใส่งานลงคิว แล้วรอผลลัพธ์ของงานตัวเอง
-    ระหว่างรอ ไม่บล็อก event loop ทั้งหมด — request อื่นที่เข้ามาพร้อมกัน
-    จะถูกใส่ต่อคิวและรอตามลำดับ ไม่ทำให้ทั้งเซิร์ฟเวอร์ค้าง
+    จุดเดียวที่ main.py เรียกใช้ตอนจะสร้างรูป (แทนที่จะเรียก generate_image()
+    ตรงๆ) เพื่อให้งานทุกงานต้องผ่านการ "ต่อคิว" นี้ก่อนเสมอ
+
+    รับข้อมูลมาจากไหน: req (GenerateRequest) ถูกส่งเข้ามาจาก main.py
+
+    ฟังก์ชันนี้ส่งต่อไปไหน: เมื่อถึงคิวของตัวเองแล้ว จะเรียก generate_image()
+                           ในไฟล์ forge_client.py ให้ไปทำงานสร้างรูปจริง
+                           แล้วส่งผลลัพธ์กลับไปให้ main.py ต่อ
     """
-    loop = asyncio.get_event_loop()
-    future = loop.create_future()
-    await _job_queue.put((req, future))
-    return await future
-
-
-def queue_size() -> int:
-    """จำนวนงานที่ยังรอคิวอยู่ (ไม่รวมงานที่กำลังทำอยู่ตอนนี้) ไว้ debug/แสดงผล"""
-    return _job_queue.qsize()
+    async with _generation_lock:
+        # โค้ดในบล็อกนี้รับประกันว่ามีแค่ 1 request เท่านั้นที่รันอยู่ในเวลาเดียวกัน
+        # request อื่นที่เข้ามาพร้อมกันจะ "ค้างรอ" อยู่ตรงบรรทัด async with ด้านบน
+        # โดยอัตโนมัติ จนกว่างานนี้จะทำเสร็จ (ออกจาก block นี้)
+        return await generate_image(req)
