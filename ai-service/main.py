@@ -1,29 +1,31 @@
 """
-FastAPI Wrapper สำหรับ Forge Neo
-=================================
-งานของไฟล์นี้: เปิด API ของตัวเองให้ Flask backend (คนที่ 2) เรียกใช้
-โดยข้างในไปเรียก Forge Neo อีกทีผ่าน forge_client.py
+Main API — ประตูหน้าบ้านของ ai-service
+==========================================
+มีหน้าที่แค่ 3 อย่าง: รับ request เข้ามา -> ส่งต่อให้ไฟล์อื่นทำงานจริง ->
+เอาผลลัพธ์มาตอบกลับ ไฟล์นี้เองไม่ยุ่งกับรายละเอียดของ Forge Neo เลย
 
-วิธีรัน (ต้องเปิด Forge Neo ทิ้งไว้ก่อน):
+Endpoint ที่มี:
+  POST /generate  -> ส่ง prompt เข้ามา ได้รูปกลับเป็น base64
+  GET  /health    -> เช็คว่าเชื่อม Forge Neo ได้อยู่ไหม
+  GET  /          -> เช็คเฉยๆ ว่า service ตัวนี้รันอยู่
+
+วิธีรัน (ต้องเปิด Forge Neo ทิ้งไว้ก่อนเสมอ):
     uvicorn main:app --reload --port 8001
-
-ทดสอบ:
-    เปิด http://127.0.0.1:8001/docs
+ทดสอบ: เปิด http://127.0.0.1:8001/docs
 """
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
-from models import GenerateRequest, GenerateResponse, HealthResponse, ChatRequest, ChatResponse
+from models import GenerateRequest, GenerateResponse, HealthResponse
 from forge_client import check_health, ForgeConnectionError, ForgeGenerationError
-from gemini_client import handle_chat_message
-from queue_manager import start_worker, enqueue_generate, queue_size
+from queue_manager import enqueue_generate
 from config import FORGE_BASE_URL
 
 app = FastAPI(
     title="Image Processing 2026 - AI Service",
     description="ห่อ API ของ Forge Neo ให้ทีมอื่นเรียกใช้ง่ายขึ้น",
-    version="0.1.0",
+    version="0.2.0",
 )
 
 # เปิด CORS กว้างๆ ไว้ก่อนตอน dev เพื่อให้ frontend/Flask เรียกจากคนละพอร์ตได้
@@ -36,15 +38,13 @@ app.add_middleware(
 )
 
 
-@app.on_event("startup")
-async def on_startup():
-    # เริ่ม worker ตัวเดียวไว้คอยดึงงานจากคิวมาทำทีละงาน
-    start_worker()
-
-
 @app.get("/health", response_model=HealthResponse)
 async def health():
-    """เช็คว่า service นี้เชื่อม Forge Neo ได้อยู่ไหม ใช้ debug ตอนอะไรๆ ไม่ทำงาน"""
+    """
+    เช็คว่า service นี้เชื่อม Forge Neo ได้อยู่ไหม ใช้ debug ตอนอะไรๆ ไม่ทำงาน
+
+    ส่งงานต่อไปที่: check_health() ในไฟล์ forge_client.py
+    """
     reachable = await check_health()
     return HealthResponse(forge_reachable=reachable, forge_url=FORGE_BASE_URL)
 
@@ -52,9 +52,12 @@ async def health():
 @app.post("/generate", response_model=GenerateResponse)
 async def generate(req: GenerateRequest):
     """
-    Endpoint หลักสำหรับสร้างรูปจาก prompt
-    รูปแบบ request/response เหมือนเดิมทุกอย่าง ไม่มีอะไรเปลี่ยนสำหรับฝั่ง Backend —
-    แค่ข้างในตอนนี้ต่อคิวก่อนยิงหา Forge Neo กันงานชนกันเวลามีหลาย request พร้อมกัน
+    Endpoint หลักของทั้งระบบ — รับ prompt จาก client (เช่น Flask backend)
+    แล้วสร้างรูปกลับไปให้
+
+    ส่งงานต่อไปที่: enqueue_generate() ในไฟล์ queue_manager.py
+                    (ซึ่งข้างในจะไปเรียก generate_image() ในไฟล์ forge_client.py
+                    อีกทีหนึ่ง เพื่อคุยกับ Forge Neo จริงๆ)
     """
     try:
         result = await enqueue_generate(req)
@@ -73,32 +76,7 @@ async def generate(req: GenerateRequest):
         raise HTTPException(status_code=502, detail=str(e))
 
 
-@app.get("/queue/status")
-async def queue_status():
-    """ดูจำนวนงานที่ยังรอคิวอยู่ตอนนี้ ไว้ debug เวลาสงสัยว่าทำไมช้า"""
-    return {"pending_jobs": queue_size()}
-
-
-@app.post("/chat", response_model=ChatResponse)
-async def chat(req: ChatRequest):
-    """
-    Endpoint สำหรับ chatbot — คุยธรรมดาได้ และถ้า user ขอรูป
-    Gemini จะตัดสินใจเรียก Forge Neo ให้เองอัตโนมัติ (ดู gemini_client.py)
-    """
-    try:
-        result = await handle_chat_message(req.session_id, req.message)
-        return ChatResponse(
-            success=True,
-            text=result["text"],
-            image_base64=result["image_base64"],
-        )
-
-    except Exception as e:
-        # ครอบกว้างไว้ก่อน เพราะ error จาก Gemini SDK มีหลายแบบ
-        # (เช่น API key ผิด, โควตาหมด, network หลุด)
-        raise HTTPException(status_code=502, detail=f"Chatbot เกิดข้อผิดพลาด: {str(e)}")
-
-
 @app.get("/")
 async def root():
+    """หน้าแรกไว้เช็คเฉยๆ ว่า service รันอยู่ ไม่ได้ทำงานอะไรต่อ"""
     return {"message": "AI Service กำลังทำงาน ไปที่ /docs เพื่อทดสอบ API"}

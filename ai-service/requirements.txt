@@ -1,0 +1,25 @@
+# --- Deep Learning / Image Generation ---
+torch --index-url https://download.pytorch.org/whl/cu121
+torchvision --index-url https://download.pytorch.org/whl/cu121
+diffusers
+transformers
+accelerate
+safetensors
+
+# --- Image Editing / Processing ---
+pillow
+opencv-python
+numpy
+
+# --- API Service ---
+fastapi
+uvicorn[standard]
+python-multipart
+pydantic
+httpx
+
+# --- Testing ---
+pytest
+
+# --- Utility ---
+python-dotenv
