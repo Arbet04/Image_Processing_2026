@@ -26,9 +26,24 @@
    `Running on local URL: http://127.0.0.1:7860`
 2. เปิด terminal อีกอันแยกต่างหาก แล้วรัน:
    ```
-   uvicorn main:app --reload --port 8001
+   uvicorn main:app --reload --host 0.0.0.0 --port 8001
    ```
-3. เปิด browser ไปที่ `http://127.0.0.1:8001/docs`
+   **ห้ามลืม `--host 0.0.0.0`** — ถ้าไม่ใส่ ai-service จะรับ request ได้แค่จาก
+   เครื่องตัวเองเท่านั้น (localhost) เพื่อนจากเครื่องอื่นในทีมจะยิงมาไม่ได้เลย
+3. เปิด browser ไปที่ `http://127.0.0.1:8001/docs` (ทดสอบในเครื่องตัวเอง)
+
+## ให้เพื่อนในทีมเชื่อมต่อเข้ามา (ทดสอบข้ามเครื่อง)
+
+เพื่อนต้องยิงมาที่ `http://<IP เครื่องนี้>:8001/generate` แทน `127.0.0.1` โดย:
+
+1. หา IP เครื่องนี้ด้วย `ipconfig` (Windows) — หรือถ้าใช้ VPN แบบ mesh
+   (เช่น Tailscale) ให้ใช้ IP เสมือนที่ VPN ให้มาแทน
+2. เปิด Windows Firewall รับ inbound connection พอร์ต 8001 (Windows Security
+   → Firewall & network protection → Advanced settings → Inbound Rules →
+   New Rule → Port → 8001 → Allow the connection)
+3. บอก IP นี้ให้ Backend ใส่ใน `.env` ของเขา (ตัวแปร `AI_SERVICE_URL`)
+4. **IP อาจเปลี่ยนทุกครั้งที่ต่อ WiFi ใหม่** (ยกเว้นใช้ VPN แบบ Tailscale ที่ IP
+   คงที่) เช็คให้ตรงกันก่อนนัดทดสอบทุกครั้ง
 
 ## ทดสอบ
 
