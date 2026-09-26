@@ -24,6 +24,8 @@ dist/
 
 # --- Model weights & cache (มักหนักหลาย GB ไม่ควร push ขึ้น GitHub) ---
 models/
+# ยกเว้นโฟลเดอร์ SQLAlchemy models ของ Backend (เป็นโค้ด ไม่ใช่ model weights)
+!Backend/app/models/
 *.ckpt
 *.safetensors
 *.pt
@@ -73,3 +75,4 @@ instance/
 *.pid
 docker-compose.override.yml
 ai-service/ai-service-run.txt
+Backend/runbackend

@@ -254,7 +254,6 @@
     <div class="profile-menu-wrap">
       <div class="profile" onclick="toggleProfile(event)">A</div>
       <div class="profile-dropdown" id="profileMenu">
-        <button onclick="handleProfileAction('settings')">ตั้งค่า</button>
         <button onclick="handleProfileAction('logout')">ออกจากระบบ</button>
       </div>
     </div>
@@ -307,26 +306,27 @@
             </div>
             <div class="setting">
               <label>จำนวนภาพ</label>
-              <select id="count-select">
-                <option value="4">4</option>
-                <option value="1">1</option>
-                <option value="2">2</option>
-                <option value="8">8</option>
+              <!-- ล็อกไว้ที่ 1 ก่อน: Backend/AI Service ตอนนี้เจนได้ทีละ 1 รูปต่อ request -->
+              <select id="count-select" disabled title="ตอนนี้รองรับทีละ 1 ภาพ">
+                <option value="1" selected>1</option>
               </select>
             </div>
             <div class="setting">
               <label>Seed</label>
-              <input id="seed-input" placeholder="สุ่มอัตโนมัติ">
+              <input id="seed-input" type="number" step="1" placeholder="สุ่มอัตโนมัติ">
+            </div>
+            <div class="setting span3">
+              <label>Steps (1–150, ยิ่งมากยิ่งละเอียดแต่ช้าลง)</label>
+              <input id="steps-input" type="number" min="1" max="150" step="1" value="30">
             </div>
             <div class="setting span3">
               <label>Negative Prompt (ไม่บังคับ)</label>
               <input id="prompt-neg" placeholder="เช่น blurry, low quality, text">
             </div>
             <div class="setting span3">
-              <label>การเชื่อมต่อโมเดล (Stable Diffusion WebUI)</label>
+              <label>การเชื่อมต่อ Backend</label>
               <div style="display:flex;gap:8px;align-items:center;">
-                <input id="sd-url" value="http://127.0.0.1:7860" style="flex:1;">
-                <button class="clear-btn" type="button" onclick="testConnection()">ทดสอบ</button>
+                <button class="clear-btn" type="button" onclick="testConnection()">ทดสอบการเชื่อมต่อ</button>
                 <span class="url-badge offline" id="url-badge">ยังไม่เชื่อมต่อ</span>
               </div>
             </div>
@@ -410,14 +410,31 @@
   <div class="modal-box">
     <img id="modalImage" class="modal-image" src="">
     <div class="modal-footer">
-      <button class="generate" onclick="saveCurrent()">♡ บันทึก</button>
+      <button class="generate" id="modalSaveBtn" onclick="saveCurrent()">♡ บันทึก</button>
       <button class="generate" onclick="downloadCurrent()">↓ ดาวน์โหลด</button>
       <button class="close" onclick="closeModal()">✕</button>
     </div>
   </div>
 </div>
 
+<script src="config.js"></script>
 <script>
+  /* ═══════════ AUTH / SESSION ═══════════ */
+
+  function getSession() {
+    try {
+      return JSON.parse(localStorage.getItem(SESSION_KEY));
+    } catch {
+      return null;
+    }
+  }
+
+  // เช็ค session ทันทีที่เปิดหน้า ถ้าไม่ได้ login ไว้ ให้เด้งกลับไปหน้า login ก่อน
+  const session = getSession();
+  if (!session || !session.access_token) {
+    window.location.href = 'login.html';
+  }
+
   /* ═══════════ NAV / PROFILE ═══════════ */
   function switchPage(id, btn) {
     document.querySelectorAll('.nav-links button').forEach(b => b.classList.remove('active'));
@@ -433,8 +450,12 @@
   document.addEventListener('click', () => document.getElementById('profileMenu').classList.remove('open'));
 
   function handleProfileAction(action) {
-    if (action === 'settings') alert('เปิดหน้าตั้งค่า');
-    else if (action === 'logout') { if (confirm('ออกจากระบบ Image Genny?')) alert('ออกจากระบบแล้ว'); }
+    if (action === 'logout') {
+      if (confirm('ออกจากระบบ Image Genny?')) {
+        localStorage.removeItem(SESSION_KEY);
+        window.location.href = 'login.html';
+      }
+    }
   }
 
   /* ═══════════ PROMPT / CHIPS ═══════════ */
@@ -461,16 +482,25 @@
 
   /* ═══════════ GENERATION ═══════════ */
   async function testConnection() {
-    const url = document.getElementById('sd-url').value.trim();
+    // เช็คว่า Backend (Flask) ตอบกลับไหม โดยยิงไปที่ /api/auth/me แบบมี token
+    // (ใช้ /me แทน /history เพราะเบากว่ามาก ไม่ช้าลงตามจำนวนประวัติ)
+    // (ไม่ยิงตรงไปที่ Forge Neo/AI Service อีกต่อไป — ต้องผ่าน Backend เท่านั้นตาม diagram)
     const badge = document.getElementById('url-badge');
     badge.textContent = 'กำลังตรวจสอบ...';
     badge.className = 'url-badge offline';
+    const s = getSession();
     try {
-      const res = await fetch(url + '/sdapi/v1/sd-models', { signal: AbortSignal.timeout(4000) });
-      if (res.ok) { badge.textContent = '✅ เชื่อมต่อแล้ว'; badge.className = 'url-badge online'; }
-      else throw new Error();
+      const res = await fetch(BACKEND_URL + '/api/auth/me', {
+        headers: { 'Authorization': 'Bearer ' + (s ? s.access_token : '') },
+        signal: AbortSignal.timeout(4000)
+      });
+      if (res.ok || res.status === 401) {
+        // 401 แปลว่า Backend ตอบสนอง แค่ token หมดอายุ/ไม่ถูกต้อง ก็ถือว่าเชื่อมต่อ server ได้
+        badge.textContent = res.ok ? '✅ เชื่อมต่อแล้ว' : '⚠️ เชื่อมต่อได้ แต่ session หมดอายุ';
+        badge.className = res.ok ? 'url-badge online' : 'url-badge offline';
+      } else throw new Error();
     } catch {
-      badge.textContent = '❌ ยังไม่เชื่อมต่อ';
+      badge.textContent = '❌ ต่อ Backend ไม่ได้';
       badge.className = 'url-badge offline';
     }
   }
@@ -478,7 +508,7 @@
   function setStatus(msg, type='') {
     const el = document.getElementById('gen-status');
     el.className = 'status-msg ' + type;
-    el.innerHTML = msg;
+    el.textContent = msg; // textContent เพราะ msg อาจมีข้อความ error จาก server
   }
 
   let generated = [];
@@ -489,7 +519,11 @@
 
   async function generateImage() {
     if (isGenerating) return;
-    const url = document.getElementById('sd-url').value.trim();
+
+    // ต้อง login ก่อนถึงจะเจนรูปได้ — เช็ค token ซ้ำอีกรอบเผื่อ session หมดอายุระหว่างใช้งาน
+    const s = getSession();
+    if (!s || !s.access_token) { window.location.href = 'login.html'; return; }
+
     let pos = document.getElementById('prompt-pos').value.trim();
     const neg = document.getElementById('prompt-neg').value.trim();
 
@@ -498,9 +532,12 @@
     if (selectedStyle) pos += styleSuffixes[selectedStyle];
 
     const [w, h] = document.getElementById('size-select').value.split(',').map(Number);
-    const batch = Math.min(parseInt(document.getElementById('count-select').value), 8);
     const seedVal = document.getElementById('seed-input').value.trim();
+    if (seedVal && !/^-?\d+$/.test(seedVal)) { setStatus('⚠️ Seed ต้องเป็นตัวเลขจำนวนเต็ม (หรือเว้นว่างเพื่อสุ่ม)', 'error'); return; }
     const seed = seedVal ? parseInt(seedVal) : -1;
+    const steps = parseInt(document.getElementById('steps-input').value);
+    if (!(steps >= 1 && steps <= 150)) { setStatus('⚠️ Steps ต้องอยู่ระหว่าง 1–150', 'error'); return; }
+    // หมายเหตุ: batch_size ยังไม่รองรับฝั่ง Backend/AI Service ตอนนี้ (เจนได้ทีละ 1 รูปต่อ request)
 
     isGenerating = true;
     const btn = document.getElementById('gen-btn');
@@ -509,22 +546,42 @@
     setStatus('กำลังสร้างภาพ กรุณารอสักครู่...');
 
     try {
-      const payload = { prompt: pos, negative_prompt: neg, steps: 30, cfg_scale: 7, seed, width: w, height: h, batch_size: batch };
-      const res = await fetch(url + '/sdapi/v1/txt2img', {
+      // ยิงผ่าน Backend (/api/image/generate) แทนการยิงตรงไป Forge Neo
+      // Backend จะเป็นคนต่อไปหา AI Service เอง พร้อมบันทึกประวัติ/ตรวจสอบสิทธิ์ผู้ใช้
+      const payload = { prompt: pos, negative_prompt: neg, steps, width: w, height: h, seed };
+      const res = await fetch(BACKEND_URL + '/api/image/generate', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + s.access_token
+        },
         body: JSON.stringify(payload)
       });
-      if (!res.ok) throw new Error('Stable Diffusion WebUI แจ้งข้อผิดพลาด: ' + res.status);
-      const data = await res.json();
 
-      generated = (data.images || []).map(b64 => ({ src: 'data:image/png;base64,' + b64, prompt: promptForCard }));
+      if (res.status === 401) {
+        // token หมดอายุ/ไม่ถูกต้อง — ให้ login ใหม่
+        localStorage.removeItem(SESSION_KEY);
+        window.location.href = 'login.html';
+        return;
+      }
+      if (!res.ok) {
+        // แสดงสาเหตุจริงจาก Backend/AI Service (เช่น Forge Neo ไม่ได้เปิด, คิวเต็ม) แทนแค่ status code
+        let reason = '';
+        try { const err = await res.json(); reason = err.details || err.error || ''; } catch {}
+        throw new Error('Backend แจ้งข้อผิดพลาด (' + res.status + ')' + (reason ? ': ' + reason : ''));
+      }
+
+      const data = await res.json();
+      // data มาจาก ImageTask.to_dict() ของ Backend: { id, status, image_url, ... }
+      // image_url ตอนนี้เก็บเป็น base64 string ของรูป (ไม่ใช่ URL จริง)
+      if (!data.image_url) throw new Error('Backend ไม่ได้ส่งรูปกลับมา (status: ' + data.status + ')');
+      generated = [{ src: 'data:image/png;base64,' + data.image_url, prompt: promptForCard }];
       renderGenerated();
-      setStatus('✅ สร้างภาพสำเร็จ (' + generated.length + ')', 'success');
+      setStatus('✅ สร้างภาพสำเร็จ', 'success');
       document.getElementById('studioDisplay').scrollIntoView({ behavior: 'smooth', block: 'start' });
 
     } catch (err) {
-      setStatus('❌ ' + err.message + ' — ตรวจสอบว่า Stable Diffusion WebUI กำลังรันอยู่ และ URL ถูกต้อง (ดูช่อง "การเชื่อมต่อโมเดล" ด้านบน)', 'error');
+      setStatus('❌ ' + err.message + ' — ตรวจสอบว่า Backend กำลังรันอยู่ และเชื่อมต่อเครือข่ายได้ (กดปุ่ม "ทดสอบการเชื่อมต่อ" ด้านบน)', 'error');
     }
 
     isGenerating = false;
@@ -534,12 +591,16 @@
 
   function clearResults() { generated = []; renderGenerated(); }
 
+  function isSaved(x) { return !!x && library.some(y => y.src === x.src); }
+
   function cardHTML(x, source, index) {
+    // ♥ = อยู่ในคลังแล้ว (กดอีกครั้งเพื่อเอาออก), ♡ = ยังไม่ได้บันทึก
+    const saved = isSaved(x);
     return `<div class="card" onclick="openModal('${source}',${index})">
       <img src="${x.src}" alt="">
       <div class="actions">
-        <button class="action" onclick="event.stopPropagation();downloadArt('${source}',${index})">↓</button>
-        <button class="action" onclick="event.stopPropagation();saveArt('${source}',${index},this)">♡</button>
+        <button class="action" title="ดาวน์โหลด" onclick="event.stopPropagation();downloadArt('${source}',${index})">↓</button>
+        <button class="action" title="${saved ? 'เอาออกจากคลัง' : 'บันทึกลงคลัง'}" onclick="event.stopPropagation();toggleSave('${source}',${index})">${saved ? '♥' : '♡'}</button>
       </div>
     </div>`;
   }
@@ -573,14 +634,27 @@
     return source === 'generated' ? generated[index] : library[index];
   }
 
-  function saveArt(source, index, btn) {
+  // กดหัวใจ: ถ้ายังไม่อยู่ในคลังให้บันทึก ถ้าอยู่แล้วให้เอาออก
+  function toggleSave(source, index) {
     const x = getArt(source, index);
     if (!x) return;
-    const exists = library.some(y => y.src === x.src);
-    if (!exists) { historyCounter++; library.unshift({ ...x, id: historyCounter }); renderLibrary(); }
-    if (btn) { btn.textContent = '♥'; btn.style.background = 'rgba(0,0,0,.85)'; }
+    if (isSaved(x)) {
+      library = library.filter(y => y.src !== x.src);
+    } else {
+      historyCounter++;
+      library.unshift({ ...x, id: historyCounter });
+    }
+    renderLibrary();
+    renderGenerated(); // ให้หัวใจในหน้าเจนรูปตรงกับสถานะในคลัง
   }
-  function saveCurrent() { saveArt(current.source, current.index, null); closeModal(); }
+  function saveCurrent() {
+    // index ของรูปในคลังจะเลื่อนหลังเอาออก จึงปิด modal ทุกครั้ง
+    toggleSave(current.source, current.index);
+    closeModal();
+  }
+  function updateModalSaveBtn(x) {
+    document.getElementById('modalSaveBtn').textContent = isSaved(x) ? '♥ เอาออกจากคลัง' : '♡ บันทึก';
+  }
 
   function downloadArt(source, index) {
     const x = getArt(source, index);
@@ -597,6 +671,7 @@
     const x = getArt(source, index);
     if (!x) return;
     document.getElementById('modalImage').src = x.src;
+    updateModalSaveBtn(x);
     document.getElementById('modal').classList.add('open');
   }
   function closeModal(e) { if (!e || e.target.id === 'modal' || e.target.classList.contains('close')) document.getElementById('modal').classList.remove('open'); }

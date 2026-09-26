@@ -19,7 +19,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from models import GenerateRequest, GenerateResponse, HealthResponse
 from forge_client import check_health, ForgeConnectionError, ForgeGenerationError
-from queue_manager import enqueue_generate
+from queue_manager import enqueue_generate, QueueFullError
 from config import FORGE_BASE_URL
 
 app = FastAPI(
@@ -66,6 +66,10 @@ async def generate(req: GenerateRequest):
             image_base64=result["image_base64"],
             elapsed_seconds=result["elapsed_seconds"],
         )
+
+    except QueueFullError as e:
+        # คิวเต็ม — ตอบ 503 ทันทีแทนการให้ client รอจน timeout
+        raise HTTPException(status_code=503, detail=str(e))
 
     except ForgeConnectionError as e:
         # Forge Neo ไม่ได้เปิดอยู่ หรือ timeout — ส่ง 503 (Service Unavailable) กลับไป
