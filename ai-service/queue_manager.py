@@ -11,12 +11,24 @@ Forge Neo error ได้ ไฟล์นี้ทำหน้าที่บั
 """
 
 import asyncio
+import logging
 from models import GenerateRequest
 from forge_client import generate_image
+from config import MAX_QUEUE_SIZE
+
+logger = logging.getLogger("uvicorn.error")
 
 # ค่า 1 หมายถึง "อนุญาตให้มีแค่ 1 งานทำพร้อมกันได้เท่านั้น" งานที่มาทีหลัง
 # จะถูกทำให้รอโดยอัตโนมัติที่บรรทัด "async with" ด้านล่าง ไม่ต้องเขียน logic คิวเอง
 _generation_lock = asyncio.Semaphore(1)
+
+# จำนวนงานที่อยู่ในระบบตอนนี้ (กำลังทำ 1 + รอคิว) — ใช้ตัดสินว่าคิวเต็มหรือยัง
+_pending = 0
+
+
+class QueueFullError(Exception):
+    """โยนเมื่อคิวเต็ม main.py จะแปลงเป็น HTTP 503 ให้ client ลองใหม่ภายหลัง"""
+    pass
 
 
 async def enqueue_generate(req: GenerateRequest) -> dict:
@@ -30,8 +42,18 @@ async def enqueue_generate(req: GenerateRequest) -> dict:
                            ในไฟล์ forge_client.py ให้ไปทำงานสร้างรูปจริง
                            แล้วส่งผลลัพธ์กลับไปให้ main.py ต่อ
     """
-    async with _generation_lock:
-        # โค้ดในบล็อกนี้รับประกันว่ามีแค่ 1 request เท่านั้นที่รันอยู่ในเวลาเดียวกัน
-        # request อื่นที่เข้ามาพร้อมกันจะ "ค้างรอ" อยู่ตรงบรรทัด async with ด้านบน
-        # โดยอัตโนมัติ จนกว่างานนี้จะทำเสร็จ (ออกจาก block นี้)
-        return await generate_image(req)
+    global _pending
+    if _pending >= MAX_QUEUE_SIZE + 1:
+        raise QueueFullError(f"คิวเต็ม (มีงานรออยู่ {_pending - 1} งาน) กรุณาลองใหม่ภายหลัง")
+
+    _pending += 1
+    logger.info(f"Task {req.task_id} queued (in system: {_pending})")
+    try:
+        async with _generation_lock:
+            # โค้ดในบล็อกนี้รับประกันว่ามีแค่ 1 request เท่านั้นที่รันอยู่ในเวลาเดียวกัน
+            # request อื่นที่เข้ามาพร้อมกันจะ "ค้างรอ" อยู่ตรงบรรทัด async with ด้านบน
+            # โดยอัตโนมัติ จนกว่างานนี้จะทำเสร็จ (ออกจาก block นี้)
+            logger.info(f"Task {req.task_id} started")
+            return await generate_image(req)
+    finally:
+        _pending -= 1

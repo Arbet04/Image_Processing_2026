@@ -19,6 +19,7 @@ class GenerateRequest(BaseModel):
     width: int = Field(512, ge=64, le=2048, description="ความกว้างรูป (px)")
     height: int = Field(512, ge=64, le=2048, description="ความสูงรูป (px)")
     seed: Optional[int] = Field(-1, description="-1 = สุ่มทุกครั้ง")
+    task_id: Optional[int] = Field(None, description="ID ของ ImageTask ฝั่ง Backend (ใช้ใน log เท่านั้น)")
 
 
 class GenerateResponse(BaseModel):

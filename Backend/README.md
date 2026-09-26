@@ -17,7 +17,7 @@ pip install -r requirements.txt
 
 ### 2. กำหนดค่า Environment Variables (.env)
 แก้ไขไฟล์ `.env` ตาม IP Address จริงในเครือข่าย LAN:
-- `AI_SERVICE_URL`: IP Address ของเครื่อง AI Server (เช่น `http://192.168.1.30:5000`)
+- `AI_SERVICE_URL`: IP Address ของเครื่อง AI Server (เช่น `http://100.x.x.x:8001` — AI Service รันที่ port 8001) ดูตัวอย่างทั้งหมดใน `.env.example`
 - `DATABASE_URL`: สำหรับ SQLite ให้ใช้ `sqlite:///app.db` หรือหากเปลี่ยนเป็น PostgreSQL ใช้ `postgresql://user:pass@192.168.1.40:5432/dbname`
 
 ### 3. รัน Server
@@ -37,4 +37,5 @@ python app.py
 
 ### Image API (`/api/image`)
 - `POST /api/image/generate` - สั่งสร้างรูปภาพ (ส่ง Request ต่อไปที่ AI Service)
-- `GET /api/image/history` - ดึงประวัติการสร้างรูปภาพของผู้ใช้
+- `GET /api/image/history` - ดึงประวัติการสร้างรูปภาพของผู้ใช้ (ไม่รวมรูป ส่ง `?include_images=1` ถ้าต้องการ)
+- `GET /api/image/<id>` - ดึงงานเดียวพร้อมรูป (`image_url` เป็น base64)
