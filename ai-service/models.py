@@ -10,7 +10,8 @@ from typing import Optional
 
 class GenerateRequest(BaseModel):
     """
-    รูปแบบข้อมูลที่ client (เช่น Flask backend) ต้องส่งมาตอนขอสร้างรูป
+    รูปแบบข้อมูลที่ client (Flask backend หรือ test-forge-api.html) ต้องส่งมาตอนขอสร้างรูป
+    ค่าที่เกินช่วงที่กำหนด (เช่น steps > 150) FastAPI จะตอบ 422 ให้เองก่อนเข้าคิว
     ใช้ใน: main.py -> endpoint POST /generate
     """
     prompt: str = Field(..., min_length=1, description="คำอธิบายรูปที่ต้องการสร้าง")
@@ -24,8 +25,11 @@ class GenerateRequest(BaseModel):
 
 class GenerateResponse(BaseModel):
     """
-    รูปแบบข้อมูลที่ตอบกลับไปหลังสร้างรูปเสร็จ (หรือ error)
+    รูปแบบข้อมูลที่ตอบกลับไปหลังสร้างรูปเสร็จ
     ใช้ใน: main.py -> endpoint POST /generate
+
+    หมายเหตุ: ตอนนี้กรณี error main.py ตอบเป็น HTTPException ({"detail": "..."})
+    ไม่ได้ใช้ success=False / error ของ model นี้ — Backend อ่านรูปจาก image_base64
     """
     success: bool
     image_base64: Optional[str] = None

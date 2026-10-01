@@ -10,13 +10,13 @@ class Config:
     # อายุ token (ชั่วโมง) — default ของ Flask-JWT-Extended คือ 15 นาที ซึ่งสั้นเกินไปสำหรับการใช้งานจริง
     JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=int(os.environ.get('JWT_EXPIRES_HOURS', '24')))
     
-    # Database
+    # Database — ตอนนี้ใช้ SQLite (ไฟล์ instance/app.db) ถ้าจะใช้ PostgreSQL ให้ตั้ง DATABASE_URL ใน .env
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL', 'sqlite:///app.db')
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
-    # AI Service Connection (Distributed IP)
-    # AI Service (FastAPI) รันที่ port 8001 — ตั้งค่าจริงใน .env เป็น IP เครื่อง AI Engineer
-    # (Tailscale IP ถ้าใช้ VPN) เช่น AI_SERVICE_URL=http://100.x.x.x:8001
+    # AI Service (FastAPI) รันที่ port 8001 — ค่า default ใช้ได้เมื่อรันเครื่องเดียวกัน
+    # ถ้าอยู่คนละเครื่อง ให้ตั้งใน .env เป็น IP เครื่อง AI Service (IP วง LAN หรือ Tailscale)
+    # เช่น AI_SERVICE_URL=http://172.20.x.x:8001  (ระวัง: port 8001 ไม่ใช่ 5000)
     AI_SERVICE_URL = os.environ.get('AI_SERVICE_URL', 'http://127.0.0.1:8001')
     # เวลาที่ Backend ยอมรอ AI Service (วินาที) — ต้องมากกว่า FORGE_TIMEOUT_SECONDS ฝั่ง ai-service
     # เพราะรวมเวลารอคิวด้วย

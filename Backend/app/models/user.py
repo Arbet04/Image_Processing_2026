@@ -1,7 +1,11 @@
 # Backend/app/models/user.py
 #
-# โมเดล User — auth.py import ไฟล์นี้ แต่ยังไม่มีใน repo จึงสร้างขึ้นตามที่ auth.py เรียกใช้
-# (set_password / check_password / to_dict) และคอลัมน์ใน Database/001_add_user_columns.sql
+# โมเดล User — ตาราง users เก็บบัญชีผู้ใช้ ใช้ใน routes/auth.py (register / login / me)
+# รหัสผ่านเก็บเป็น hash ของ werkzeug ในคอลัมน์ password_hash เท่านั้น ไม่เก็บรหัสผ่านตรงๆ
+#
+# ชื่อตาราง/คอลัมน์ใน DB ต้องตรงกับไฟล์นี้ — db.create_all() สร้างเฉพาะตารางที่ยังไม่มี
+# ไม่เพิ่มคอลัมน์ให้ตารางเดิม (ถ้าไม่ตรงจะเจอ error แบบ "no such column: users.role")
+# หมายเหตุ: role / status / last_login มีคอลัมน์ไว้แล้ว แต่โค้ดตอนนี้ยังไม่ได้ใช้ตรวจสิทธิ์หรืออัปเดตค่า
 
 from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash

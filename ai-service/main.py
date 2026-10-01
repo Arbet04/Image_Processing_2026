@@ -28,8 +28,9 @@ app = FastAPI(
     version="0.2.0",
 )
 
-# เปิด CORS กว้างๆ ไว้ก่อนตอน dev เพื่อให้ frontend/Flask เรียกจากคนละพอร์ตได้
-# ตอน deploy จริงควรจำกัด origin ให้แคบลง
+# เปิด CORS กว้างๆ ไว้เพื่อให้หน้าทดสอบ test-forge-api.html เรียกจาก browser ได้
+# (Flask backend เรียกแบบ server-to-server ไม่เกี่ยวกับ CORS / หน้าเว็บหลักไม่ได้เรียก service นี้ตรงๆ)
+# service นี้ไม่มีการตรวจ login — ตอน deploy จริงควรให้เฉพาะเครื่อง Backend เข้าถึง port 8001 ได้
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -52,8 +53,11 @@ async def health():
 @app.post("/generate", response_model=GenerateResponse)
 async def generate(req: GenerateRequest):
     """
-    Endpoint หลักของทั้งระบบ — รับ prompt จาก client (เช่น Flask backend)
-    แล้วสร้างรูปกลับไปให้
+    Endpoint หลักของทั้งระบบ — รับ prompt จาก client (Flask backend:
+    Backend/app/services/ai_client.py) แล้วสร้างรูปกลับไปให้
+
+    ถ้าไม่สำเร็จจะตอบเป็น HTTP error พร้อม {"detail": "ข้อความ"}:
+      503 = คิวเต็ม หรือ ต่อ Forge Neo ไม่ได้/หมดเวลา, 502 = Forge Neo generate ไม่สำเร็จ
 
     ส่งงานต่อไปที่: enqueue_generate() ในไฟล์ queue_manager.py
                     (ซึ่งข้างในจะไปเรียก generate_image() ในไฟล์ forge_client.py

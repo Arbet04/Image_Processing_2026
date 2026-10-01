@@ -547,7 +547,9 @@
 
 <script src="config.js"></script>
 <script>
-  /* ═══════════ AUTH / SESSION ═══════════ */
+  /* ═══════════ AUTH / SESSION ═══════════
+     BACKEND_URL และ SESSION_KEY มาจาก config.js
+     session = {access_token, user} ที่ login.html เก็บลง localStorage ตอน login สำเร็จ */
 
   function getSession() {
     try {
@@ -626,8 +628,8 @@
   /* ═══════════ GENERATION ═══════════ */
   async function testConnection() {
     // เช็คว่า Backend (Flask) ตอบกลับไหม โดยยิงไปที่ /api/auth/me แบบมี token
-    // (ใช้ /me แทน /history เพราะเบากว่ามาก ไม่ช้าลงตามจำนวนประวัติ)
-    // (ไม่ยิงตรงไปที่ Forge Neo/AI Service อีกต่อไป — ต้องผ่าน Backend เท่านั้นตาม diagram)
+    // (ใช้ /me เพราะเบา ไม่ช้าลงตามจำนวนประวัติเหมือน /history)
+    // หน้าเว็บคุยกับ Backend เท่านั้น — ปุ่มนี้จึงไม่ได้บอกว่า AI Service / Forge Neo พร้อมหรือไม่
     const badge = document.getElementById('url-badge');
     badge.textContent = 'กำลังตรวจสอบ...';
     badge.className = 'url-badge offline';
@@ -654,8 +656,8 @@
     el.textContent = msg; // textContent เพราะ msg อาจมีข้อความ error จาก server
   }
 
-  let generated = [];
-  let library = [];
+  let generated = [];   // รูปจากการเจนครั้งล่าสุด (ตอนนี้ครั้งละ 1 รูป)
+  let library = [];     // คลังภาพ — เก็บในหน่วยความจำของหน้าเว็บเท่านั้น รีเฟรชแล้วหาย (ยังไม่ได้บันทึกลง Backend)
   let historyCounter = 0;
   let current = { source: '', index: 0 };
   let isGenerating = false;
@@ -690,8 +692,8 @@
     setStatus('กำลังสร้างภาพ กรุณารอสักครู่...');
 
     try {
-      // ยิงผ่าน Backend (/api/image/generate) แทนการยิงตรงไป Forge Neo
-      // Backend จะเป็นคนต่อไปหา AI Service เอง พร้อมบันทึกประวัติ/ตรวจสอบสิทธิ์ผู้ใช้
+      // ยิงไปที่ Backend (/api/image/generate) — Backend ตรวจ token, บันทึกประวัติลง DB
+      // แล้วส่งต่อให้ AI Service -> Forge Neo  request นี้ค้างรอจนรูปเสร็จ (อาจนานหลายนาทีถ้ามีคิว)
       const payload = { prompt: pos, negative_prompt: neg, steps, width: w, height: h, seed };
       const res = await fetch(BACKEND_URL + '/api/image/generate', {
         method: 'POST',
@@ -717,7 +719,7 @@
 
       const data = await res.json();
       // data มาจาก ImageTask.to_dict() ของ Backend: { id, status, image_url, ... }
-      // image_url ตอนนี้เก็บเป็น base64 string ของรูป (ไม่ใช่ URL จริง)
+      // image_url เป็น base64 string ของรูป (ไม่ใช่ URL จริง) จึงต้องต่อ prefix data:image/png;base64,
       if (!data.image_url) throw new Error('Backend ไม่ได้ส่งรูปกลับมา (status: ' + data.status + ')');
       generated = [{ src: 'data:image/png;base64,' + data.image_url, prompt: promptForCard }];
       renderGenerated();
@@ -820,7 +822,10 @@
   }
   function closeModal(e) { if (!e || e.target.id === 'modal' || e.target.classList.contains('close')) document.getElementById('modal').classList.remove('open'); }
 
-  /* ═══════════ IMAGE EDIT (erase / reset / crop) ═══════════ */
+  /* ═══════════ IMAGE EDIT (reset / erase / crop / adjust / rotate) ═══════════
+     ทำงานใน browser ล้วนๆ บน <canvas> — ไม่ผ่าน Backend/AI Service และไม่บันทึกลง DB
+     editCanvas = ภาพที่กำลังแก้ (แสดงผล), baseCanvas = ภาพเดียวกันแต่ไม่มีรอยลบ (ให้ Smart Select วิเคราะห์)
+     ทุกเครื่องมือที่เปลี่ยนภาพต้องเรียก pushHistory() เพื่อให้ "ย้อนกลับ" ได้ (เก็บสูงสุด 15 ขั้น) */
   const MAX_EDIT_DIM = 320;
 
   let editCanvas, editCtx, baseCanvas, baseCtx;

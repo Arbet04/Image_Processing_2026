@@ -10,7 +10,9 @@
   เวลามีหลาย request เข้ามาพร้อมกัน (GPU รับงานได้ทีละ 1 งานเท่านั้น)
 - `forge_client.py` — ฟังก์ชันคุยกับ Forge Neo โดยตรง (เจนรูป)
 - `models.py` — กำหนดรูปแบบข้อมูล request/response
-- `config.py` — ตั้งค่า URL และ timeout
+- `config.py` — ตั้งค่า URL ของ Forge Neo, timeout, ขนาดคิว (อ่านจาก `.env`)
+- `.env.example` — ตัวอย่างไฟล์ `.env` (คัดลอกเป็น `.env` แล้วแก้ค่า)
+- `test-forge-api.html` — หน้าทดสอบยิง `/generate` ตรงๆ โดยไม่ผ่าน Backend
 
 ## วิธีติดตั้ง
 
@@ -26,7 +28,7 @@
    `Running on local URL: http://127.0.0.1:7860`
 2. เปิด terminal อีกอันแยกต่างหาก แล้วรัน:
    ```
-   uvicorn main:app --reload --host 0.0.0.0 --port 8001
+   uvicorn main:app --host 0.0.0.0 --port 8001
    ```
    **ห้ามลืม `--host 0.0.0.0`** — ถ้าไม่ใส่ ai-service จะรับ request ได้แค่จาก
    เครื่องตัวเองเท่านั้น (localhost) เพื่อนจากเครื่องอื่นในทีมจะยิงมาไม่ได้เลย
@@ -55,15 +57,23 @@
     "negative_prompt": "blurry, low quality",
     "steps": 20,
     "width": 512,
-    "height": 512
+    "height": 512,
+    "seed": -1
   }
   ```
   จะได้ `image_base64` กลับมา เอาไป decode เป็นรูปได้
+  ถ้าไม่สำเร็จจะได้ HTTP error พร้อม `{"detail": "..."}` — 503 = คิวเต็ม หรือต่อ Forge Neo ไม่ได้, 502 = Forge Neo generate ไม่สำเร็จ
+
+## การตั้งค่า (`.env`)
+
+- `FORGE_BASE_URL` — ปกติ `http://127.0.0.1:7860` (Forge Neo รับเฉพาะจากเครื่องตัวเอง อย่าใส่ IP วง LAN)
+- `FORGE_TIMEOUT_SECONDS` — เวลารอ Forge Neo ต่อ 1 รูป (default 300) ต้องน้อยกว่า `AI_SERVICE_TIMEOUT` ฝั่ง Backend
+- `MAX_QUEUE_SIZE` — จำนวนงานที่ยอมให้รอคิว (default 3) เกินนี้ตอบ 503 ทันที
 
 ## ขั้นต่อไป (ยังไม่ทำในเวอร์ชันนี้)
 
-- เพิ่ม endpoint `/edit` สำหรับ image-to-image (ถ้าทีมยังต้องการ — ตอนนี้
-  Frontend ทำ filter แบบ client-side เองไปก่อน)
-- เพิ่มการเซฟรูปลงไฟล์ + คืน path/URL แทนการส่ง base64 ตรงๆ (รอ Backend
-  ยืนยันรูปแบบ response ที่ต้องการ)
+- เพิ่ม endpoint สำหรับ image-to-image / inpainting / upscale (ถ้าทีมยังต้องการ — ตอนนี้
+  หน้าแก้ไขภาพของ Frontend ทำ ลบ/ครอป/ปรับสี/หมุน แบบ client-side เองทั้งหมด)
+- เพิ่มการเซฟรูปลงไฟล์ + คืน path/URL แทนการส่ง base64 ตรงๆ (ตอนนี้ Backend เก็บ
+  base64 ลงคอลัมน์ `image_url` ใน DB โดยตรง)
 - เพิ่ม field เลือก checkpoint/LoRA ใน `GenerateRequest`

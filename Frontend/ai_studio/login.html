@@ -212,6 +212,11 @@
 
 <script src="config.js"></script>
 <script>
+  // BACKEND_URL และ SESSION_KEY มาจาก config.js (ใช้ร่วมกับ index.html)
+  // สมัคร/เข้าสู่ระบบผ่าน Backend: POST /api/auth/register และ /api/auth/login
+  // login สำเร็จจะเก็บ {access_token, user} ลง localStorage แล้วไปหน้า index.html
+  // หมายเหตุ: ถ้า Backend ตอบ 500 (ไม่ใช่ JSON) จะตกไปที่ catch และขึ้นข้อความ "ไม่สามารถเชื่อมต่อ..."
+  // ทั้งที่เครือข่ายปกติ — ให้ดู error จริงใน terminal ของ Backend
 
   function setAuthMsg(id, text, type) {
     const el = document.getElementById(id);
