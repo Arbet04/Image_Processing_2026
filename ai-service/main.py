@@ -10,7 +10,7 @@ Endpoint ที่มี:
   GET  /          -> เช็คเฉยๆ ว่า service ตัวนี้รันอยู่
 
 วิธีรัน (ต้องเปิด Forge Neo ทิ้งไว้ก่อนเสมอ):
-    uvicorn main:app --reload --port 8001
+    uvicorn main:app --host 0.0.0.0 --port 8001
 ทดสอบ: เปิด http://127.0.0.1:8001/docs
 """
 
