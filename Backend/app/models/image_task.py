@@ -7,8 +7,7 @@
 # หมายเหตุสำคัญ: คอลัมน์ image_url เก็บค่าเป็น base64 string ของรูป (ไม่ใช่ URL จริง)
 # ชื่อคอลัมน์คงไว้ตามเดิมเพื่อไม่ต้องทำ migration — ใน DB ต้องเป็นชนิด TEXT (รูปละ ~2 MB)
 
-from datetime import datetime
-from app.extensions import db
+from app.extensions import db, utcnow
 
 
 class ImageTask(db.Model):
@@ -31,7 +30,7 @@ class ImageTask(db.Model):
     image_url = db.Column(db.Text, nullable=True)
 
     # เวลาสร้างงาน ใช้ sort ประวัติ (order_by(ImageTask.created_at.desc()))
-    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    created_at = db.Column(db.DateTime, default=utcnow, nullable=False)
 
     def to_dict(self, include_image=True):
         """

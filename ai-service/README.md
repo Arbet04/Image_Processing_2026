@@ -19,7 +19,7 @@
 1. ให้แน่ใจว่า activate `.venv` ของโปรเจกต์แล้ว
 2. ติดตั้ง dependency (ถ้ายังไม่มี):
    ```
-   pip install fastapi uvicorn httpx python-dotenv
+   pip install -r requirements.txt
    ```
 
 ## วิธีรัน

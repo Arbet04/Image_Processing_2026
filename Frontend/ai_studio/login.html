@@ -215,8 +215,18 @@
   // BACKEND_URL และ SESSION_KEY มาจาก config.js (ใช้ร่วมกับ index.html)
   // สมัคร/เข้าสู่ระบบผ่าน Backend: POST /api/auth/register และ /api/auth/login
   // login สำเร็จจะเก็บ {access_token, user} ลง localStorage แล้วไปหน้า index.html
-  // หมายเหตุ: ถ้า Backend ตอบ 500 (ไม่ใช่ JSON) จะตกไปที่ catch และขึ้นข้อความ "ไม่สามารถเชื่อมต่อ..."
-  // ทั้งที่เครือข่ายปกติ — ให้ดู error จริงใน terminal ของ Backend
+
+  // อ่าน response เป็น JSON แบบไม่พัง ถ้า server ตอบเป็น HTML (เช่น 500 ของ Flask หรือ 502/504 ของ nginx) จะได้ null
+  async function readJson(response) {
+    try { return await response.json(); } catch { return null; }
+  }
+
+  // ข้อความ error ตามสิ่งที่เกิดจริง: 5xx = server มีปัญหา (ต่อถึงแล้ว) ไม่ใช่ปัญหาเครือข่าย
+  function authErrorMessage(response, data, fallback) {
+    if (data && data.error) return data.error;
+    if (response.status >= 500) return 'Backend เกิดข้อผิดพลาด (' + response.status + ') — ดู error ใน terminal ของ Backend';
+    return fallback;
+  }
 
   function setAuthMsg(id, text, type) {
     const el = document.getElementById(id);
@@ -253,7 +263,7 @@
         body: JSON.stringify({ username: name, password: password })
       });
 
-      const data = await response.json();
+      const data = await readJson(response);
 
       if (response.ok) {
         setAuthMsg('signup-msg', 'สร้างบัญชีสำเร็จ กรุณาเข้าสู่ระบบ', 'success');
@@ -263,7 +273,7 @@
           document.getElementById('login-password').value = '';
         }, 1000);
       } else {
-        setAuthMsg('signup-msg', data.error || 'สมัครสมาชิกไม่สำเร็จ', 'error');
+        setAuthMsg('signup-msg', authErrorMessage(response, data, 'สมัครสมาชิกไม่สำเร็จ'), 'error');
       }
     } catch (error) {
       setAuthMsg('signup-msg', 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ Backend ได้', 'error');
@@ -282,16 +292,16 @@
         body: JSON.stringify({ username: username, password: password })
       });
 
-      const data = await response.json();
+      const data = await readJson(response);
 
-      if (response.ok) {
+      if (response.ok && data && data.access_token) {
         setAuthMsg('login-msg', 'เข้าสู่ระบบสำเร็จ', 'success');
         localStorage.setItem(SESSION_KEY, JSON.stringify(data));
         setTimeout(() => {
           window.location.href = 'index.html';
         }, 500);
       } else {
-        setAuthMsg('login-msg', data.error || 'ชื่อผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง', 'error');
+        setAuthMsg('login-msg', authErrorMessage(response, data, 'ชื่อผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง'), 'error');
       }
     } catch (error) {
       setAuthMsg('login-msg', 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ Backend ได้', 'error');

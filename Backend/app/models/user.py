@@ -7,9 +7,8 @@
 # ไม่เพิ่มคอลัมน์ให้ตารางเดิม (ถ้าไม่ตรงจะเจอ error แบบ "no such column: users.role")
 # หมายเหตุ: role / status / last_login มีคอลัมน์ไว้แล้ว แต่โค้ดตอนนี้ยังไม่ได้ใช้ตรวจสิทธิ์หรืออัปเดตค่า
 
-from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
-from app.extensions import db
+from app.extensions import db, utcnow
 
 
 class User(db.Model):
@@ -20,8 +19,8 @@ class User(db.Model):
     password_hash = db.Column(db.String(255), nullable=False)
     role = db.Column(db.String(20), nullable=False, default='user')
     status = db.Column(db.String(20), nullable=False, default='active')
-    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    created_at = db.Column(db.DateTime, default=utcnow, nullable=False)
+    updated_at = db.Column(db.DateTime, default=utcnow, onupdate=utcnow, nullable=False)
     last_login = db.Column(db.DateTime, nullable=True)
 
     tasks = db.relationship('ImageTask', backref='user', lazy=True)
