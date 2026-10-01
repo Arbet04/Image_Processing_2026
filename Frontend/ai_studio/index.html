@@ -505,7 +505,7 @@
     <p class="about-desc">
       Image Genny คือเว็บแอปพลิเคชันที่ช่วยให้ผู้ใช้สร้างภาพจากข้อความอธิบาย (Text-to-Image)
       ได้หลายสไตล์ ทั้งสมจริง การ์ตูน ภาพวาดสี และอนิเมะ พร้อมเครื่องมือแก้ไขภาพเบื้องต้น
-      เช่น ลบส่วนของภาพด้วยแปรงหรือ AI เลือกวัตถุอัตโนมัติ และครอปภาพ
+      เช่น ลบส่วนของภาพด้วยแปรงหรือ AI เลือกวัตถุอัตโนมัติ ครอปภาพ ปรับแสงและสี หมุนและพลิกภาพ
       รวมถึงมีคลังภาพส่วนตัวสำหรับเก็บผลงาน
     </p>
 
@@ -527,7 +527,8 @@
     <div class="about-section">ฟีเจอร์หลัก</div>
     <ul class="about-features">
       <li>✦ สร้างภาพจากข้อความ เลือกสไตล์ ขนาด Seed และ Steps ได้</li>
-      <li>🧽 แก้ไขภาพ ลบด้วยแปรงหรือให้ AI เลือกวัตถุ พร้อมครอปและย้อนกลับ</li>
+      <li>🧽 แก้ไขภาพ ลบด้วยแปรงหรือให้ AI เลือกวัตถุ ครอป และย้อนกลับได้</li>
+      <li>🎨 ปรับความสว่าง คอนทราสต์ ความอิ่มสี ฟิลเตอร์ขาวดำ/ซีเปีย พร้อมหมุนและพลิกภาพ</li>
       <li>♡ คลังภาพส่วนตัว บันทึกและดาวน์โหลดผลงานเป็น PNG</li>
       <li>🔒 ระบบเข้าสู่ระบบด้วย JWT ประวัติการสร้างภาพผูกกับบัญชีผู้ใช้</li>
     </ul>
@@ -567,6 +568,13 @@
   const session = getSession();
   if (!PREVIEW_MODE && (!session || !session.access_token)) {
     window.location.href = 'login.html';
+  }
+
+  // ปุ่มโปรไฟล์: แสดงตัวอักษรแรกของชื่อผู้ใช้ที่ login อยู่ (ชี้เมาส์เพื่อดูชื่อเต็ม)
+  if (session && session.user && session.user.username) {
+    const profileEl = document.querySelector('.profile');
+    profileEl.textContent = session.user.username.charAt(0).toUpperCase();
+    profileEl.title = session.user.username;
   }
 
   /* ═══════════ NAV / PROFILE ═══════════ */
@@ -826,7 +834,8 @@
      ทำงานใน browser ล้วนๆ บน <canvas> — ไม่ผ่าน Backend/AI Service และไม่บันทึกลง DB
      editCanvas = ภาพที่กำลังแก้ (แสดงผล), baseCanvas = ภาพเดียวกันแต่ไม่มีรอยลบ (ให้ Smart Select วิเคราะห์)
      ทุกเครื่องมือที่เปลี่ยนภาพต้องเรียก pushHistory() เพื่อให้ "ย้อนกลับ" ได้ (เก็บสูงสุด 15 ขั้น) */
-  const MAX_EDIT_DIM = 320;
+  const MAX_EDIT_DIM = 1344;     // ขนาดพิกเซลจริงสูงสุดของภาพที่แก้ (ไฟล์ที่ดาวน์โหลดได้ขนาดนี้) — เท่ากับขนาดใหญ่สุดที่เจนได้
+  const MAX_EDIT_DISPLAY = 440;  // ขนาดสูงสุดที่แสดงบนหน้าจอ (CSS px) — ภาพที่ใหญ่กว่านี้ถูกย่อเฉพาะตอนแสดงผล
 
   let editCanvas, editCtx, baseCanvas, baseCtx;
   let smartOverlayCanvas, smartOverlayCtx;
@@ -844,6 +853,22 @@
   let scribblePts = [];       // points of the stroke currently being dragged (canvas px)
   let smartMask = null;       // Float32Array [0,1], length W*H, from the segmenter
   let smartThreshold = 0.5;
+
+  // ตั้งขนาดที่แสดงบนจอของ canvas ทั้งชุด จากขนาดพิกเซลจริง (w, h) โดยย่อให้ไม่เกิน MAX_EDIT_DISPLAY
+  function setEditDisplaySize(w, h) {
+    const s = Math.min(MAX_EDIT_DISPLAY / w, MAX_EDIT_DISPLAY / h, 1);
+    const dw = Math.round(w * s) + 'px', dh = Math.round(h * s) + 'px';
+    editCanvas.style.width = dw; editCanvas.style.height = dh;
+    smartOverlayCanvas.style.width = dw; smartOverlayCanvas.style.height = dh;
+    const wrap = document.getElementById('canvas-wrap');
+    wrap.style.width = dw; wrap.style.height = dh;
+  }
+
+  // จำนวนพิกเซลจริงของ canvas ต่อ 1 px บนหน้าจอ (>1 เมื่อภาพถูกย่อตอนแสดงผล)
+  function editScale() {
+    const r = editCanvas.getBoundingClientRect();
+    return r.width ? editCanvas.width / r.width : 1;
+  }
 
   function handleEditDrop(e) {
     e.preventDefault();
@@ -874,7 +899,6 @@
 
       editCanvas = document.getElementById('edit-canvas');
       editCanvas.width = w; editCanvas.height = h;
-      editCanvas.style.width = w + 'px'; editCanvas.style.height = h + 'px';
       editCtx = editCanvas.getContext('2d');
       editCtx.clearRect(0, 0, w, h);
       editCtx.drawImage(img, 0, 0, w, h);
@@ -886,11 +910,9 @@
 
       smartOverlayCanvas = document.getElementById('smart-overlay');
       smartOverlayCanvas.width = w; smartOverlayCanvas.height = h;
-      smartOverlayCanvas.style.width = w + 'px'; smartOverlayCanvas.style.height = h + 'px';
       smartOverlayCtx = smartOverlayCanvas.getContext('2d');
 
-      document.getElementById('canvas-wrap').style.width = w + 'px';
-      document.getElementById('canvas-wrap').style.height = h + 'px';
+      setEditDisplaySize(w, h);
 
       editHistory = [];
       pushHistory();
@@ -925,12 +947,9 @@
   function restoreState(state, resetHistoryStack) {
     cancelSmartSelection();
     editCanvas.width = state.w; editCanvas.height = state.h;
-    editCanvas.style.width = state.w + 'px'; editCanvas.style.height = state.h + 'px';
     baseCanvas.width = state.w; baseCanvas.height = state.h;
     smartOverlayCanvas.width = state.w; smartOverlayCanvas.height = state.h;
-    smartOverlayCanvas.style.width = state.w + 'px'; smartOverlayCanvas.style.height = state.h + 'px';
-    document.getElementById('canvas-wrap').style.width = state.w + 'px';
-    document.getElementById('canvas-wrap').style.height = state.h + 'px';
+    setEditDisplaySize(state.w, state.h);
 
     const eImg = new Image();
     eImg.onload = () => editCtx.drawImage(eImg, 0, 0);
@@ -1029,11 +1048,8 @@
       ctx.restore();
     });
 
-    editCanvas.style.width = nw + 'px'; editCanvas.style.height = nh + 'px';
     smartOverlayCanvas.width = nw; smartOverlayCanvas.height = nh;
-    smartOverlayCanvas.style.width = nw + 'px'; smartOverlayCanvas.style.height = nh + 'px';
-    document.getElementById('canvas-wrap').style.width = nw + 'px';
-    document.getElementById('canvas-wrap').style.height = nh + 'px';
+    setEditDisplaySize(nw, nh);
 
     pushHistory();
   }
@@ -1108,7 +1124,9 @@
     const rect = editCanvas.getBoundingClientRect();
     const cx = (evt.touches ? evt.touches[0].clientX : evt.clientX) - rect.left;
     const cy = (evt.touches ? evt.touches[0].clientY : evt.clientY) - rect.top;
-    return { x: cx, y: cy, rect };
+    // x, y = ตำแหน่งในพิกเซลจริงของ canvas (ใช้วาด/ลบ), cssX, cssY = ตำแหน่งบนหน้าจอ (ใช้วางกรอบครอป)
+    const k = rect.width ? editCanvas.width / rect.width : 1;
+    return { x: cx * k, y: cy * k, cssX: cx, cssY: cy, k, rect };
   }
 
   function drawAt(x, y) {
@@ -1116,7 +1134,7 @@
       editCtx.save();
       editCtx.globalCompositeOperation = 'destination-out';
       editCtx.beginPath();
-      editCtx.arc(x, y, brushSize / 2, 0, Math.PI * 2);
+      editCtx.arc(x, y, brushSize / 2 * editScale(), 0, Math.PI * 2); // ขนาดแปรงนับเป็น px บนหน้าจอ
       editCtx.fill();
       editCtx.restore();
     }
@@ -1128,12 +1146,12 @@
     if (!scribblePts.length) return;
     smartOverlayCtx.strokeStyle = 'rgba(143,207,232,0.95)';
     smartOverlayCtx.fillStyle = 'rgba(143,207,232,0.95)';
-    smartOverlayCtx.lineWidth = 3;
+    smartOverlayCtx.lineWidth = 3 * editScale();
     smartOverlayCtx.lineCap = 'round';
     smartOverlayCtx.lineJoin = 'round';
     if (scribblePts.length === 1) {
       smartOverlayCtx.beginPath();
-      smartOverlayCtx.arc(scribblePts[0].x, scribblePts[0].y, 3, 0, Math.PI * 2);
+      smartOverlayCtx.arc(scribblePts[0].x, scribblePts[0].y, 3 * editScale(), 0, Math.PI * 2);
       smartOverlayCtx.fill();
       return;
     }
@@ -1213,12 +1231,12 @@
       e.preventDefault();
       if (editTool === 'adjust' || editTool === 'rotate') return; // เครื่องมือนี้ไม่ใช้การลากบนภาพ
       editCanvas.setPointerCapture && editCanvas.setPointerCapture(e.pointerId);
-      const { x, y } = getCanvasPos(e);
+      const { x, y, cssX, cssY } = getCanvasPos(e);
       if (editTool === 'crop') {
-        cropStart = { x, y };
+        cropStart = { x: cssX, y: cssY };
         const overlay = document.getElementById('crop-overlay');
         overlay.style.display = 'block';
-        overlay.style.left = x + 'px'; overlay.style.top = y + 'px';
+        overlay.style.left = cssX + 'px'; overlay.style.top = cssY + 'px';
         overlay.style.width = '0px'; overlay.style.height = '0px';
       } else if (editTool === 'erase' && eraseMode === 'smart') {
         if (smartModelState !== 'ready') { ensureSmartModelLoaded(); return; }
@@ -1232,14 +1250,14 @@
       }
     };
     editCanvas.onpointermove = (e) => {
-      const { x, y } = getCanvasPos(e);
+      const { x, y, cssX, cssY, k } = getCanvasPos(e);
       if (editTool === 'crop' && cropStart) {
-        const left = Math.min(cropStart.x, x), top = Math.min(cropStart.y, y);
-        const w = Math.abs(x - cropStart.x), h = Math.abs(y - cropStart.y);
+        const left = Math.min(cropStart.x, cssX), top = Math.min(cropStart.y, cssY);
+        const w = Math.abs(cssX - cropStart.x), h = Math.abs(cssY - cropStart.y);
         const overlay = document.getElementById('crop-overlay');
         overlay.style.left = left + 'px'; overlay.style.top = top + 'px';
         overlay.style.width = w + 'px'; overlay.style.height = h + 'px';
-        cropRectPx = { x: left, y: top, w, h };
+        cropRectPx = { x: left * k, y: top * k, w: w * k, h: h * k }; // แปลงเป็นพิกเซลจริงของ canvas
       } else if (editTool === 'erase' && eraseMode === 'smart' && isScribbling) {
         const last = scribblePts[scribblePts.length - 1];
         const dx = x - last.x, dy = y - last.y;
@@ -1262,23 +1280,22 @@
     if (!cropRectPx || cropRectPx.w < 8 || cropRectPx.h < 8) { alert('ลากบนภาพก่อนเพื่อเลือกพื้นที่ที่จะครอป'); return; }
     cancelSmartSelection();
     const { x, y, w, h } = cropRectPx;
-    const rx = Math.round(x), ry = Math.round(y), rw = Math.round(w), rh = Math.round(h);
+    // ปัดเป็นจำนวนเต็ม และไม่ให้กรอบเกินขอบภาพ
+    const rx = Math.max(0, Math.round(x)), ry = Math.max(0, Math.round(y));
+    const rw = Math.min(Math.round(w), editCanvas.width - rx), rh = Math.min(Math.round(h), editCanvas.height - ry);
 
     const editData = editCtx.getImageData(rx, ry, rw, rh);
     const baseData = baseCtx.getImageData(rx, ry, rw, rh);
 
     editCanvas.width = rw; editCanvas.height = rh;
-    editCanvas.style.width = rw + 'px'; editCanvas.style.height = rh + 'px';
     editCtx.putImageData(editData, 0, 0);
 
     baseCanvas.width = rw; baseCanvas.height = rh;
     baseCtx.putImageData(baseData, 0, 0);
 
     smartOverlayCanvas.width = rw; smartOverlayCanvas.height = rh;
-    smartOverlayCanvas.style.width = rw + 'px'; smartOverlayCanvas.style.height = rh + 'px';
 
-    document.getElementById('canvas-wrap').style.width = rw + 'px';
-    document.getElementById('canvas-wrap').style.height = rh + 'px';
+    setEditDisplaySize(rw, rh);
     document.getElementById('crop-overlay').style.display = 'none';
     cropStart = null; cropRectPx = null;
 

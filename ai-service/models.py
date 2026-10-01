@@ -28,13 +28,12 @@ class GenerateResponse(BaseModel):
     รูปแบบข้อมูลที่ตอบกลับไปหลังสร้างรูปเสร็จ
     ใช้ใน: main.py -> endpoint POST /generate
 
-    หมายเหตุ: ตอนนี้กรณี error main.py ตอบเป็น HTTPException ({"detail": "..."})
-    ไม่ได้ใช้ success=False / error ของ model นี้ — Backend อ่านรูปจาก image_base64
+    กรณี error main.py ตอบเป็น HTTPException ({"detail": "..."}) ไม่ได้ใช้ model นี้
+    success จึงเป็น True เสมอ — Backend อ่านรูปจาก image_base64
     """
     success: bool
     image_base64: Optional[str] = None
     elapsed_seconds: Optional[float] = None
-    error: Optional[str] = None
 
 
 class HealthResponse(BaseModel):

@@ -1,29 +1,6 @@
-# --- Deep Learning / Image Generation ---
-torch --index-url https://download.pytorch.org/whl/cu121
-torchvision --index-url https://download.pytorch.org/whl/cu121
-diffusers
-transformers
-accelerate
-safetensors
+# โปรเจคนี้แยก dependency ตามส่วน — ติดตั้งจากไฟล์ของส่วนที่จะรัน (แนะนำให้ใช้ venv แยกกัน)
+#   Backend (Flask):      pip install -r Backend/requirements.txt
+#   AI Service (FastAPI): pip install -r ai-service/requirements.txt
+# Frontend เป็น HTML/JS ล้วน ไม่ต้องติดตั้งอะไร
 
-# --- Image Editing / Processing ---
-pillow
-opencv-python
-numpy
-
-# --- API Service ---
-fastapi
-uvicorn[standard]
-python-multipart
-pydantic
-
-# --- Queue (สำหรับงาน generate ที่ใช้เวลานาน) ---
-celery
-redis
-
-# --- Testing ---
-pytest
-httpx
-
-# --- Utility ---
-python-dotenv
+-r ai-service/requirements.txt

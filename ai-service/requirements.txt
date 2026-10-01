@@ -1,25 +1,13 @@
-# --- Deep Learning / Image Generation ---
-torch --index-url https://download.pytorch.org/whl/cu121
-torchvision --index-url https://download.pytorch.org/whl/cu121
-diffusers
-transformers
-accelerate
-safetensors
-
-# --- Image Editing / Processing ---
-pillow
-opencv-python
-numpy
+# ai-service เป็นแค่ตัวกลางส่งคำขอไปที่ Forge Neo (Forge เป็นคนเจนรูปเอง)
+# จึงไม่ต้องติดตั้ง torch / diffusers ในนี้
 
 # --- API Service ---
 fastapi
 uvicorn[standard]
-python-multipart
 pydantic
+
+# --- เรียก Forge Neo ---
 httpx
 
-# --- Testing ---
-pytest
-
-# --- Utility ---
+# --- อ่านไฟล์ .env ---
 python-dotenv

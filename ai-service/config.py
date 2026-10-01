@@ -22,9 +22,4 @@ FORGE_TIMEOUT_SECONDS = int(os.getenv("FORGE_TIMEOUT_SECONDS", "300"))
 # แทนที่จะให้ client รอจน timeout แล้ว GPU ยังเจนรูปที่ไม่มีใครรอรับอยู่
 MAX_QUEUE_SIZE = int(os.getenv("MAX_QUEUE_SIZE", "3"))
 
-# ค่าเริ่มต้นเวลา client ไม่ระบุมาใน request
-# หมายเหตุ: ตอนนี้ค่า default ที่ใช้จริงเขียนไว้ใน GenerateRequest (models.py) โดยตรง
-# 3 ค่าด้านล่างยังไม่มีไฟล์ไหน import ไปใช้
-DEFAULT_STEPS = 20
-DEFAULT_WIDTH = 512
-DEFAULT_HEIGHT = 512
+# หมายเหตุ: ค่าเริ่มต้นของ steps / width / height อยู่ใน GenerateRequest (models.py)
