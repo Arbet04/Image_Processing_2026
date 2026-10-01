@@ -32,6 +32,9 @@ python app.py
 
 ## 📌 Endpoints ที่มีให้ใช้งาน
 
+### Health
+- `GET /api/health` - เช็คว่า Backend ทำงานอยู่ (ไม่ต้อง login) ใช้ทดสอบ nginx reverse proxy
+
 ### Auth API (`/api/auth`)
 - `POST /api/auth/register` - สมัครสมาชิก (`username`, `password`)
 - `POST /api/auth/login` - เข้าสู่ระบบ (`username`, `password`) -> ได้รับ `access_token`
