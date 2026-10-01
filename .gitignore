@@ -76,3 +76,4 @@ instance/
 docker-compose.override.yml
 ai-service/ai-service-run.txt
 Backend/runbackend
+Database/DB_SETUP_GUIDE.md
