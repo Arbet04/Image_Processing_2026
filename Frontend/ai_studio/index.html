@@ -188,6 +188,11 @@
   .brush-row input[type=range] { flex: 1; accent-color: var(--accent2); }
   .brush-row span { font-size: 11.5px; color: var(--accent2); min-width: 26px; text-align: right; }
 
+  .adjust-panel { display: none; flex-direction: column; gap: 10px; width: 100%; }
+  .adjust-panel.show { display: flex; }
+  .adjust-panel .brush-row label { min-width: 64px; }
+  .adjust-panel .brush-row span { min-width: 38px; }
+
   .erase-mode-row { display: none; gap: 6px; width: 100%; }
   .erase-mode-row.show { display: flex; }
   .mode-btn { flex: 1; padding: 7px 6px; border: 1px solid var(--border); background: var(--surface2); color: var(--muted); font-size: 11.5px; cursor: pointer; transition: all .15s; }
@@ -381,9 +386,41 @@
 
       <div id="edit-workspace" style="display:none; flex-direction:column; align-items:center; gap:14px; width:100%; max-width:480px;">
         <div class="edit-toolbar">
-          <button class="tool-btn active" id="tool-erase" onclick="setEditTool('erase')"><span class="ic">🧽</span>ลบ</button>
           <button class="tool-btn" id="tool-reset" onclick="resetEdit()"><span class="ic">⟲</span>รีเซ็ต</button>
+          <button class="tool-btn active" id="tool-erase" onclick="setEditTool('erase')"><span class="ic">🧽</span>ลบ</button>
           <button class="tool-btn" id="tool-crop" onclick="setEditTool('crop')"><span class="ic">✂️</span>ครอป</button>
+          <button class="tool-btn" id="tool-adjust" onclick="setEditTool('adjust')"><span class="ic">🎨</span>ปรับสี</button>
+          <button class="tool-btn" id="tool-rotate" onclick="setEditTool('rotate')"><span class="ic">🔄</span>หมุน</button>
+        </div>
+
+        <div class="erase-mode-row" id="rotate-row">
+          <button class="mode-btn" onclick="transformEdit('rotate-left')">↺ หมุนซ้าย</button>
+          <button class="mode-btn" onclick="transformEdit('rotate-right')">↻ หมุนขวา</button>
+          <button class="mode-btn" onclick="transformEdit('flip-h')">⇋ พลิกซ้าย-ขวา</button>
+          <button class="mode-btn" onclick="transformEdit('flip-v')">⇅ พลิกบน-ล่าง</button>
+        </div>
+
+        <div class="adjust-panel" id="adjust-panel">
+          <div class="brush-row show">
+            <label>ความสว่าง</label>
+            <input type="range" id="adj-brightness" min="0" max="200" value="100" oninput="updateAdjust('brightness', this.value)">
+            <span id="adj-brightness-val">100%</span>
+          </div>
+          <div class="brush-row show">
+            <label>คอนทราสต์</label>
+            <input type="range" id="adj-contrast" min="0" max="200" value="100" oninput="updateAdjust('contrast', this.value)">
+            <span id="adj-contrast-val">100%</span>
+          </div>
+          <div class="brush-row show">
+            <label>ความอิ่มสี</label>
+            <input type="range" id="adj-saturate" min="0" max="200" value="100" oninput="updateAdjust('saturate', this.value)">
+            <span id="adj-saturate-val">100%</span>
+          </div>
+          <div class="erase-mode-row show">
+            <button class="mode-btn active" id="preset-none" onclick="setAdjustPreset('none')">ไม่มีฟิลเตอร์</button>
+            <button class="mode-btn" id="preset-grayscale" onclick="setAdjustPreset('grayscale')">⚫ ขาวดำ</button>
+            <button class="mode-btn" id="preset-sepia" onclick="setAdjustPreset('sepia')">🟤 ซีเปีย</button>
+          </div>
         </div>
 
         <div class="erase-mode-row show" id="erase-mode-row">
@@ -414,6 +451,8 @@
         <div class="edit-actions">
           <button onclick="undoEdit()" id="undo-btn" disabled>↶ ย้อนกลับ</button>
           <button onclick="applyCrop()" id="crop-apply-btn" style="display:none;">✓ ยืนยันครอป</button>
+          <button onclick="resetAdjustControls()" id="adjust-clear-btn" style="display:none;">✕ ล้างค่า</button>
+          <button class="primary" onclick="applyAdjust()" id="adjust-apply-btn" style="display:none;">✓ ใช้การปรับสี</button>
           <button class="primary" onclick="applySmartErase()" id="smart-apply-btn" style="display:none;">✓ ลบส่วนที่เลือก</button>
           <button onclick="cancelSmartSelection()" id="smart-cancel-btn" style="display:none;">✕ ยกเลิก</button>
           <button class="primary" onclick="downloadEdit()">⬇ ดาวน์โหลด PNG</button>
@@ -897,11 +936,108 @@
 
     if (resetHistoryStack) { editHistory = [state]; }
     document.getElementById('undo-btn').disabled = editHistory.length <= 1;
+    resetAdjustControls();
+  }
+
+  /* ── ปรับแสง / ฟิลเตอร์สี ──
+     ระหว่างเลื่อนแถบจะแสดงผลด้วย CSS filter บน canvas (ยังไม่แก้พิกเซลจริง)
+     กด "ใช้การปรับสี" ถึงจะวาดลง canvas จริงด้วย ctx.filter แล้วบันทึกลง history */
+  const ADJUST_DEFAULT = { brightness: 100, contrast: 100, saturate: 100, preset: 'none' };
+  let adjust = { ...ADJUST_DEFAULT };
+
+  function isAdjustDefault() {
+    return adjust.brightness === 100 && adjust.contrast === 100 && adjust.saturate === 100 && adjust.preset === 'none';
+  }
+
+  function adjustFilterString() {
+    let f = `brightness(${adjust.brightness}%) contrast(${adjust.contrast}%) saturate(${adjust.saturate}%)`;
+    if (adjust.preset === 'grayscale') f += ' grayscale(100%)';
+    if (adjust.preset === 'sepia') f += ' sepia(100%)';
+    return f;
+  }
+
+  function previewAdjust() {
+    if (editCanvas) editCanvas.style.filter = isAdjustDefault() ? '' : adjustFilterString();
+  }
+
+  function updateAdjust(key, v) {
+    adjust[key] = parseInt(v);
+    document.getElementById('adj-' + key + '-val').textContent = v + '%';
+    previewAdjust();
+  }
+
+  function setAdjustPreset(preset) {
+    adjust.preset = preset;
+    ['none', 'grayscale', 'sepia'].forEach(p =>
+      document.getElementById('preset-' + p).classList.toggle('active', p === preset));
+    previewAdjust();
+  }
+
+  function resetAdjustControls() {
+    adjust = { ...ADJUST_DEFAULT };
+    ['brightness', 'contrast', 'saturate'].forEach(k => {
+      document.getElementById('adj-' + k).value = 100;
+      document.getElementById('adj-' + k + '-val').textContent = '100%';
+    });
+    setAdjustPreset('none'); // เรียก previewAdjust() ให้ด้วย จึงล้าง CSS filter ออก
+  }
+
+  function applyAdjust() {
+    if (!editCanvas || isAdjustDefault()) return;
+    if (!('filter' in editCtx)) { alert('เบราว์เซอร์นี้ยังไม่รองรับการปรับสี กรุณาใช้ Chrome, Edge หรือ Firefox'); return; }
+    const f = adjustFilterString();
+    // ปรับทั้งภาพที่แก้อยู่ และ baseCanvas (ภาพที่ Smart Select ใช้วิเคราะห์) ให้ตรงกัน
+    [[editCanvas, editCtx], [baseCanvas, baseCtx]].forEach(([cv, ctx]) => {
+      const tmp = document.createElement('canvas');
+      tmp.width = cv.width; tmp.height = cv.height;
+      const t = tmp.getContext('2d');
+      t.filter = f;
+      t.drawImage(cv, 0, 0);
+      ctx.clearRect(0, 0, cv.width, cv.height);
+      ctx.drawImage(tmp, 0, 0);
+    });
+    resetAdjustControls();
+    pushHistory();
+  }
+
+  /* ── หมุน / พลิกภาพ ── กดแล้วใช้ทันที (บันทึกลง history ให้ undo ได้) */
+  function transformEdit(kind) {
+    if (!editCanvas) return;
+    cancelSmartSelection();
+    const w = editCanvas.width, h = editCanvas.height;
+    const rotate = kind === 'rotate-left' || kind === 'rotate-right';
+    const nw = rotate ? h : w, nh = rotate ? w : h;
+
+    // หมุน/พลิกทั้งภาพที่แก้อยู่ และ baseCanvas (ภาพที่ Smart Select ใช้) ให้ตรงกัน
+    [[editCanvas, editCtx], [baseCanvas, baseCtx]].forEach(([cv, ctx]) => {
+      const tmp = document.createElement('canvas');
+      tmp.width = w; tmp.height = h;
+      tmp.getContext('2d').drawImage(cv, 0, 0);
+
+      cv.width = nw; cv.height = nh; // เปลี่ยนขนาด = ล้าง canvas และ transform ด้วย
+      ctx.save();
+      if (kind === 'rotate-right') { ctx.translate(nw, 0); ctx.rotate(Math.PI / 2); }
+      else if (kind === 'rotate-left') { ctx.translate(0, nh); ctx.rotate(-Math.PI / 2); }
+      else if (kind === 'flip-h') { ctx.translate(nw, 0); ctx.scale(-1, 1); }
+      else if (kind === 'flip-v') { ctx.translate(0, nh); ctx.scale(1, -1); }
+      ctx.drawImage(tmp, 0, 0);
+      ctx.restore();
+    });
+
+    editCanvas.style.width = nw + 'px'; editCanvas.style.height = nh + 'px';
+    smartOverlayCanvas.width = nw; smartOverlayCanvas.height = nh;
+    smartOverlayCanvas.style.width = nw + 'px'; smartOverlayCanvas.style.height = nh + 'px';
+    document.getElementById('canvas-wrap').style.width = nw + 'px';
+    document.getElementById('canvas-wrap').style.height = nh + 'px';
+
+    pushHistory();
   }
 
   function updateHint() {
     let text;
     if (editTool === 'crop') text = "ลากบนภาพเพื่อเลือกพื้นที่ แล้วกดยืนยันครอป";
+    else if (editTool === 'rotate') text = "กดปุ่มด้านบนเพื่อหมุนหรือพลิกภาพ — ใช้ทันที กดย้อนกลับได้";
+    else if (editTool === 'adjust') text = "เลื่อนแถบหรือเลือกฟิลเตอร์เพื่อดูตัวอย่าง แล้วกด \"ใช้การปรับสี\"";
     else if (eraseMode === 'smart') text = "ลากเส้นทับวัตถุที่ต้องการลบ แล้วปล่อย — AI จะเลือกให้อัตโนมัติ";
     else text = "แปรงทับส่วนของภาพที่ต้องการลบออก — จะถูกลบให้โปร่งใส";
     document.getElementById('edit-hint').textContent = text;
@@ -911,6 +1047,13 @@
     editTool = tool;
     document.getElementById('tool-erase').classList.toggle('active', tool === 'erase');
     document.getElementById('tool-crop').classList.toggle('active', tool === 'crop');
+    document.getElementById('tool-adjust').classList.toggle('active', tool === 'adjust');
+    document.getElementById('tool-rotate').classList.toggle('active', tool === 'rotate');
+    document.getElementById('rotate-row').classList.toggle('show', tool === 'rotate');
+    document.getElementById('adjust-panel').classList.toggle('show', tool === 'adjust');
+    document.getElementById('adjust-apply-btn').style.display = tool === 'adjust' ? 'block' : 'none';
+    document.getElementById('adjust-clear-btn').style.display = tool === 'adjust' ? 'block' : 'none';
+    if (tool !== 'adjust') resetAdjustControls(); // ออกจากเครื่องมือโดยไม่กดใช้ = ยกเลิกตัวอย่าง
     document.getElementById('erase-mode-row').classList.toggle('show', tool === 'erase');
     document.getElementById('brush-row').classList.toggle('show', tool === 'erase' && eraseMode === 'manual');
     document.getElementById('threshold-row').classList.toggle('show', tool === 'erase' && eraseMode === 'smart');
@@ -1063,6 +1206,7 @@
   function bindCanvasEvents() {
     editCanvas.onpointerdown = (e) => {
       e.preventDefault();
+      if (editTool === 'adjust' || editTool === 'rotate') return; // เครื่องมือนี้ไม่ใช้การลากบนภาพ
       editCanvas.setPointerCapture && editCanvas.setPointerCapture(e.pointerId);
       const { x, y } = getCanvasPos(e);
       if (editTool === 'crop') {
@@ -1137,6 +1281,8 @@
   }
 
   function downloadEdit() {
+    // ถ้ายังมีการปรับสีที่แสดงตัวอย่างค้างอยู่ ให้ใช้จริงก่อน ไม่งั้นไฟล์ที่ได้จะไม่ตรงกับที่เห็น
+    if (editTool === 'adjust' && !isAdjustDefault()) applyAdjust();
     const a = document.createElement('a');
     a.href = editCanvas.toDataURL('image/png');
     a.download = 'edited_' + Date.now() + '.png';
