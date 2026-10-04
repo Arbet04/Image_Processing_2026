@@ -2,6 +2,10 @@ import requests
 from flask import current_app
 
 def call_ai_service(prompt, task_id, negative_prompt='', steps=20, width=512, height=512, seed=-1):
+    # ส่งคำขอเจนรูปไปที่ POST {AI_SERVICE_URL}/generate (FastAPI ใน ai-service/main.py)
+    # คืนค่า (dict, status_code): สำเร็จ = ({success, image_base64, elapsed_seconds}, 200)
+    # ไม่สำเร็จ = ({'error': ข้อความ}, รหัส) โดย 504 = หมดเวลารอ, 500 = ต่อ AI Service ไม่ได้
+    # task_id ส่งไปเพื่อให้ log ฝั่ง AI Service โยงกลับมาหา ImageTask ได้เท่านั้น
     ai_base_url = current_app.config['AI_SERVICE_URL']
     target_url = f"{ai_base_url}/generate"
 

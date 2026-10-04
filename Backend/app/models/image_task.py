@@ -1,16 +1,13 @@
 # Backend/app/models/image_task.py
 #
-# โมเดล ImageTask — เก็บประวัติการเจนรูปของแต่ละ user ลงฐานข้อมูล
-# ไฟล์นี้ไม่ได้ถูกส่งมาจากเพื่อน (Backend) เลยสร้างขึ้นใหม่โดยอ้างอิงจากวิธีที่
-# image.py / auth.py เรียกใช้งานจริง (ImageTask(user_id=..., prompt=..., status=...),
-# task.id, task.status, task.image_url, ImageTask.query...order_by(created_at...),
-# .to_dict()) — ถ้าเพื่อนมี schema จริงอยู่แล้ว ให้เอาไฟล์นี้ไปเทียบ/ปรับชื่อคอลัมน์ให้ตรงกันอีกที
+# โมเดล ImageTask — ตาราง image_tasks เก็บประวัติการเจนรูปของแต่ละ user
+# ใช้ใน routes/image.py: สร้าง 1 แถวต่อ 1 คำขอเจนรูป (POST /api/image/generate)
+# แล้วอัปเดต status + รูปเมื่อ AI Service ตอบกลับ
 #
-# หมายเหตุสำคัญ: คอลัมน์ image_url ยังใช้ชื่อเดิม แต่ตอนนี้เก็บค่าเป็น base64 string
-# ของรูป (ไม่ใช่ URL จริง) เพื่อไม่ต้องทำ migration เปลี่ยนชื่อคอลัมน์
+# หมายเหตุสำคัญ: คอลัมน์ image_url เก็บค่าเป็น base64 string ของรูป (ไม่ใช่ URL จริง)
+# ชื่อคอลัมน์คงไว้ตามเดิมเพื่อไม่ต้องทำ migration — ใน DB ต้องเป็นชนิด TEXT (รูปละ ~2 MB)
 
-from datetime import datetime
-from app.extensions import db
+from app.extensions import db, utcnow
 
 
 class ImageTask(db.Model):
@@ -26,13 +23,14 @@ class ImageTask(db.Model):
     prompt = db.Column(db.Text, nullable=False)
 
     # สถานะงาน: 'processing' -> 'completed' หรือ 'failed'
+    # (งานที่ค้าง 'processing' ตอนเปิด server จะถูกเปลี่ยนเป็น 'failed' ใน app/__init__.py)
     status = db.Column(db.String(20), nullable=False, default='processing')
 
     # ผลลัพธ์รูป — เก็บเป็น base64 string ที่ได้จาก ai-service (คอลัมน์ชื่อเดิมเพื่อไม่ต้อง migrate)
     image_url = db.Column(db.Text, nullable=True)
 
     # เวลาสร้างงาน ใช้ sort ประวัติ (order_by(ImageTask.created_at.desc()))
-    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    created_at = db.Column(db.DateTime, default=utcnow, nullable=False)
 
     def to_dict(self, include_image=True):
         """

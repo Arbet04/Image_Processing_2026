@@ -188,6 +188,11 @@
   .brush-row input[type=range] { flex: 1; accent-color: var(--accent2); }
   .brush-row span { font-size: 11.5px; color: var(--accent2); min-width: 26px; text-align: right; }
 
+  .adjust-panel { display: none; flex-direction: column; gap: 10px; width: 100%; }
+  .adjust-panel.show { display: flex; }
+  .adjust-panel .brush-row label { min-width: 64px; }
+  .adjust-panel .brush-row span { min-width: 38px; }
+
   .erase-mode-row { display: none; gap: 6px; width: 100%; }
   .erase-mode-row.show { display: flex; }
   .mode-btn { flex: 1; padding: 7px 6px; border: 1px solid var(--border); background: var(--surface2); color: var(--muted); font-size: 11.5px; cursor: pointer; transition: all .15s; }
@@ -219,6 +224,32 @@
   .modal-image { width: 100%; aspect-ratio: 1/1; object-fit: contain; background: var(--surface2); display: block; }
   .modal-footer { display: flex; align-items: center; gap: 10px; padding: 12px 2px 2px; }
   .close { margin-left: auto; border: 1px solid var(--border); background: var(--surface2); color: var(--text); width: 34px; height: 34px; border-radius: 50%; cursor: pointer; }
+
+  /* ── ABOUT MODAL ── */
+  .about-box { width: min(560px, 95vw); padding: 22px; border-top: 3px solid var(--accent2); }
+  .about-head { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
+  .about-logo { width: 46px; height: 46px; border: 1px solid var(--border); background: var(--surface2); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .about-title { font-family: 'Fraunces', serif; font-style: italic; font-weight: 600; font-size: 22px; }
+  .about-ver { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .about-head .close { margin-left: auto; flex-shrink: 0; }
+  .about-desc { font-size: 13.5px; line-height: 1.75; color: var(--text); margin: 0 0 18px; }
+  .about-section { font-family: 'Fraunces', serif; font-size: 15px; font-weight: 600; color: var(--accent2); margin: 18px 0 10px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+  .about-team { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .member { display: flex; align-items: center; gap: 10px; background: var(--surface2); border: 1px solid var(--border); padding: 10px 12px; }
+  .m-avatar { width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0; background: linear-gradient(135deg, var(--accent), var(--accent2)); color: var(--bg); font-size: 20px; line-height: 1; display: flex; align-items: center; justify-content: center; }
+  .m-name { font-size: 13px; font-weight: 600; line-height: 1.35; }
+  .m-id { font-size: 12px; color: var(--muted); margin-top: 2px; letter-spacing: .5px; }
+  .about-tags { display: flex; flex-wrap: wrap; gap: 8px; }
+  .about-tags span { border: 1px solid var(--border); background: var(--surface2); color: var(--muted); font-size: 12px; padding: 5px 10px; }
+  .about-foot { margin-top: 20px; text-align: center; font-size: 11.5px; color: var(--muted); line-height: 1.6; }
+  .about-info { border: 1px solid var(--border); background: var(--surface2); }
+  .info-row { display: flex; justify-content: space-between; gap: 12px; padding: 9px 12px; font-size: 13px; }
+  .info-row + .info-row { border-top: 1px solid var(--border); }
+  .info-row span { color: var(--muted); }
+  .info-row b { font-weight: 500; text-align: right; }
+  .about-features { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
+  .about-features li { font-size: 13px; line-height: 1.6; color: var(--text); padding: 8px 12px; background: var(--surface2); border-left: 2px solid var(--accent2); }
+  @media (max-width: 600px) { .about-team { grid-template-columns: 1fr; } }
 
   @media (max-width: 900px) {
     .brand { min-width: auto; }
@@ -254,6 +285,7 @@
     <div class="profile-menu-wrap">
       <div class="profile" onclick="toggleProfile(event)">A</div>
       <div class="profile-dropdown" id="profileMenu">
+        <button onclick="handleProfileAction('about')">ℹ️ เกี่ยวกับ</button>
         <button onclick="handleProfileAction('logout')">ออกจากระบบ</button>
       </div>
     </div>
@@ -354,9 +386,41 @@
 
       <div id="edit-workspace" style="display:none; flex-direction:column; align-items:center; gap:14px; width:100%; max-width:480px;">
         <div class="edit-toolbar">
-          <button class="tool-btn active" id="tool-erase" onclick="setEditTool('erase')"><span class="ic">🧽</span>ลบ</button>
           <button class="tool-btn" id="tool-reset" onclick="resetEdit()"><span class="ic">⟲</span>รีเซ็ต</button>
+          <button class="tool-btn active" id="tool-erase" onclick="setEditTool('erase')"><span class="ic">🧽</span>ลบ</button>
           <button class="tool-btn" id="tool-crop" onclick="setEditTool('crop')"><span class="ic">✂️</span>ครอป</button>
+          <button class="tool-btn" id="tool-adjust" onclick="setEditTool('adjust')"><span class="ic">🎨</span>ปรับสี</button>
+          <button class="tool-btn" id="tool-rotate" onclick="setEditTool('rotate')"><span class="ic">🔄</span>หมุน</button>
+        </div>
+
+        <div class="erase-mode-row" id="rotate-row">
+          <button class="mode-btn" onclick="transformEdit('rotate-left')">↺ หมุนซ้าย</button>
+          <button class="mode-btn" onclick="transformEdit('rotate-right')">↻ หมุนขวา</button>
+          <button class="mode-btn" onclick="transformEdit('flip-h')">⇋ พลิกซ้าย-ขวา</button>
+          <button class="mode-btn" onclick="transformEdit('flip-v')">⇅ พลิกบน-ล่าง</button>
+        </div>
+
+        <div class="adjust-panel" id="adjust-panel">
+          <div class="brush-row show">
+            <label>ความสว่าง</label>
+            <input type="range" id="adj-brightness" min="0" max="200" value="100" oninput="updateAdjust('brightness', this.value)">
+            <span id="adj-brightness-val">100%</span>
+          </div>
+          <div class="brush-row show">
+            <label>คอนทราสต์</label>
+            <input type="range" id="adj-contrast" min="0" max="200" value="100" oninput="updateAdjust('contrast', this.value)">
+            <span id="adj-contrast-val">100%</span>
+          </div>
+          <div class="brush-row show">
+            <label>ความอิ่มสี</label>
+            <input type="range" id="adj-saturate" min="0" max="200" value="100" oninput="updateAdjust('saturate', this.value)">
+            <span id="adj-saturate-val">100%</span>
+          </div>
+          <div class="erase-mode-row show">
+            <button class="mode-btn active" id="preset-none" onclick="setAdjustPreset('none')">ไม่มีฟิลเตอร์</button>
+            <button class="mode-btn" id="preset-grayscale" onclick="setAdjustPreset('grayscale')">⚫ ขาวดำ</button>
+            <button class="mode-btn" id="preset-sepia" onclick="setAdjustPreset('sepia')">🟤 ซีเปีย</button>
+          </div>
         </div>
 
         <div class="erase-mode-row show" id="erase-mode-row">
@@ -387,6 +451,8 @@
         <div class="edit-actions">
           <button onclick="undoEdit()" id="undo-btn" disabled>↶ ย้อนกลับ</button>
           <button onclick="applyCrop()" id="crop-apply-btn" style="display:none;">✓ ยืนยันครอป</button>
+          <button onclick="resetAdjustControls()" id="adjust-clear-btn" style="display:none;">✕ ล้างค่า</button>
+          <button class="primary" onclick="applyAdjust()" id="adjust-apply-btn" style="display:none;">✓ ใช้การปรับสี</button>
           <button class="primary" onclick="applySmartErase()" id="smart-apply-btn" style="display:none;">✓ ลบส่วนที่เลือก</button>
           <button onclick="cancelSmartSelection()" id="smart-cancel-btn" style="display:none;">✕ ยกเลิก</button>
           <button class="primary" onclick="downloadEdit()">⬇ ดาวน์โหลด PNG</button>
@@ -417,9 +483,74 @@
   </div>
 </div>
 
+<!-- ═══ เกี่ยวกับ ═══ -->
+<div class="modal" id="aboutModal" onclick="closeAbout(event)">
+  <div class="modal-box about-box">
+    <div class="about-head">
+      <div class="about-logo">
+        <svg width="26" height="26" viewBox="0 0 21 21" fill="none">
+          <rect x="1.5" y="3.5" width="18" height="14" stroke="#8fcfe8" stroke-width="1"/>
+          <circle cx="6.3" cy="8" r="1.7" stroke="#8fcfe8" stroke-width="1"/>
+          <path d="M1.5 14.5 L7 10.5 L11 13.5 L14.5 10.8 L19.5 15" stroke="#8fcfe8" stroke-width="1"/>
+          <path d="M16 1 L16.8 2.7 L18.5 3.5 L16.8 4.3 L16 6 L15.2 4.3 L13.5 3.5 L15.2 2.7 Z" fill="#8fcfe8"/>
+        </svg>
+      </div>
+      <div>
+        <div class="about-title">Image Genny</div>
+        <div class="about-ver">เวอร์ชัน 1.0 · เว็บแอปพลิเคชันสร้างและแก้ไขภาพด้วย AI</div>
+      </div>
+      <button class="close" onclick="closeAbout()">✕</button>
+    </div>
+
+    <p class="about-desc">
+      Image Genny คือเว็บแอปพลิเคชันที่ช่วยให้ผู้ใช้สร้างภาพจากข้อความอธิบาย (Text-to-Image)
+      ได้หลายสไตล์ ทั้งสมจริง การ์ตูน ภาพวาดสี และอนิเมะ พร้อมเครื่องมือแก้ไขภาพเบื้องต้น
+      เช่น ลบส่วนของภาพด้วยแปรงหรือ AI เลือกวัตถุอัตโนมัติ ครอปภาพ ปรับแสงและสี หมุนและพลิกภาพ
+      รวมถึงมีคลังภาพส่วนตัวสำหรับเก็บผลงาน
+    </p>
+
+    <div class="about-section">ผู้จัดทำ</div>
+    <div class="about-team">
+      <div class="member"><span class="m-avatar">🐱</span><div><div class="m-name">นายพิพรรธน์ คล้ายสุข</div><div class="m-id">6710301003</div></div></div>
+      <div class="member"><span class="m-avatar">🐰</span><div><div class="m-name">นางสาวสุนันทา บุญปกครอง</div><div class="m-id">6710301019</div></div></div>
+      <div class="member"><span class="m-avatar">🦊</span><div><div class="m-name">นายอาเบต บัวดอกตูม</div><div class="m-id">6710301027</div></div></div>
+      <div class="member"><span class="m-avatar">🐼</span><div><div class="m-name">นายสิรภพ เสงี่ยมศักดิ์</div><div class="m-id">6710301036</div></div></div>
+    </div>
+
+    <div class="about-section">ข้อมูลโครงงาน</div>
+    <div class="about-info">
+      <div class="info-row"><span>ปีการศึกษา</span><b>2569</b></div>
+      <div class="info-row"><span>สถาบัน</span><b>สถาบันเทคโนโลยีจิตรลดา<br>คณะเทคโนโลยีดิจิทัล<br>สาขาวิศวกรรมคอมพิวเตอร์</b></div>
+      <div class="info-row"><span>อาจารย์ผู้สอน</span><b>อาจารย์กฤษฎา พรหมสุทธิรักษ์</b></div>
+    </div>
+
+    <div class="about-section">ฟีเจอร์หลัก</div>
+    <ul class="about-features">
+      <li>✦ สร้างภาพจากข้อความ เลือกสไตล์ ขนาด Seed และ Steps ได้</li>
+      <li>🧽 แก้ไขภาพ ลบด้วยแปรงหรือให้ AI เลือกวัตถุ ครอป และย้อนกลับได้</li>
+      <li>🎨 ปรับความสว่าง คอนทราสต์ ความอิ่มสี ฟิลเตอร์ขาวดำ/ซีเปีย พร้อมหมุนและพลิกภาพ</li>
+      <li>♡ คลังภาพส่วนตัว บันทึกและดาวน์โหลดผลงานเป็น PNG</li>
+      <li>🔒 ระบบเข้าสู่ระบบด้วย JWT ประวัติการสร้างภาพผูกกับบัญชีผู้ใช้</li>
+    </ul>
+
+    <div class="about-section">เทคโนโลยีที่ใช้</div>
+    <div class="about-tags">
+      <span>HTML / CSS / JavaScript</span>
+      <span>Flask (Backend API)</span>
+      <span>Stable Diffusion (Forge Neo)</span>
+      <span>MediaPipe Interactive Segmenter</span>
+      <span>JWT Authentication</span>
+    </div>
+
+    <div class="about-foot">© 2026 Image Genny · จัดทำเพื่อการศึกษา · ภาพที่สร้างด้วย AI อาจไม่สมบูรณ์ โปรดตรวจสอบก่อนนำไปใช้งานจริง</div>
+  </div>
+</div>
+
 <script src="config.js"></script>
 <script>
-  /* ═══════════ AUTH / SESSION ═══════════ */
+  /* ═══════════ AUTH / SESSION ═══════════
+     BACKEND_URL และ SESSION_KEY มาจาก config.js
+     session = {access_token, user} ที่ login.html เก็บลง localStorage ตอน login สำเร็จ */
 
   function getSession() {
     try {
@@ -430,9 +561,20 @@
   }
 
   // เช็ค session ทันทีที่เปิดหน้า ถ้าไม่ได้ login ไว้ ให้เด้งกลับไปหน้า login ก่อน
+  // โหมดพรีวิว: เปิดอัตโนมัติเฉพาะตอนไม่มี config.js (ดูหน้าเว็บอย่างเดียว)
+  // ถ้ามี config.js อยู่ข้างไฟล์ จะทำงานปกติเหมือนโค้ดเดิม เชื่อม Backend ได้เลย
+  const PREVIEW_MODE = (typeof SESSION_KEY === 'undefined' || typeof BACKEND_URL === 'undefined');
+
   const session = getSession();
-  if (!session || !session.access_token) {
+  if (!PREVIEW_MODE && (!session || !session.access_token)) {
     window.location.href = 'login.html';
+  }
+
+  // ปุ่มโปรไฟล์: แสดงตัวอักษรแรกของชื่อผู้ใช้ที่ login อยู่ (ชี้เมาส์เพื่อดูชื่อเต็ม)
+  if (session && session.user && session.user.username) {
+    const profileEl = document.querySelector('.profile');
+    profileEl.textContent = session.user.username.charAt(0).toUpperCase();
+    profileEl.title = session.user.username;
   }
 
   /* ═══════════ NAV / PROFILE ═══════════ */
@@ -450,13 +592,24 @@
   document.addEventListener('click', () => document.getElementById('profileMenu').classList.remove('open'));
 
   function handleProfileAction(action) {
-    if (action === 'logout') {
+    if (action === 'about') {
+      openAbout();
+    } else if (action === 'logout') {
+      if (PREVIEW_MODE) { alert('โหมดพรีวิว: ไม่มีระบบ login'); return; }
       if (confirm('ออกจากระบบ Image Genny?')) {
         localStorage.removeItem(SESSION_KEY);
         window.location.href = 'login.html';
       }
     }
   }
+
+  function openAbout() { document.getElementById('aboutModal').classList.add('open'); }
+  function closeAbout(e) {
+    if (!e || e.target.id === 'aboutModal' || e.target.classList.contains('close')) {
+      document.getElementById('aboutModal').classList.remove('open');
+    }
+  }
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeAbout(); });
 
   /* ═══════════ PROMPT / CHIPS ═══════════ */
   function updateCounter() {
@@ -483,8 +636,8 @@
   /* ═══════════ GENERATION ═══════════ */
   async function testConnection() {
     // เช็คว่า Backend (Flask) ตอบกลับไหม โดยยิงไปที่ /api/auth/me แบบมี token
-    // (ใช้ /me แทน /history เพราะเบากว่ามาก ไม่ช้าลงตามจำนวนประวัติ)
-    // (ไม่ยิงตรงไปที่ Forge Neo/AI Service อีกต่อไป — ต้องผ่าน Backend เท่านั้นตาม diagram)
+    // (ใช้ /me เพราะเบา ไม่ช้าลงตามจำนวนประวัติเหมือน /history)
+    // หน้าเว็บคุยกับ Backend เท่านั้น — ปุ่มนี้จึงไม่ได้บอกว่า AI Service / Forge Neo พร้อมหรือไม่
     const badge = document.getElementById('url-badge');
     badge.textContent = 'กำลังตรวจสอบ...';
     badge.className = 'url-badge offline';
@@ -511,8 +664,8 @@
     el.textContent = msg; // textContent เพราะ msg อาจมีข้อความ error จาก server
   }
 
-  let generated = [];
-  let library = [];
+  let generated = [];   // รูปจากการเจนครั้งล่าสุด (ตอนนี้ครั้งละ 1 รูป)
+  let library = [];     // คลังภาพ — เก็บในหน่วยความจำของหน้าเว็บเท่านั้น รีเฟรชแล้วหาย (ยังไม่ได้บันทึกลง Backend)
   let historyCounter = 0;
   let current = { source: '', index: 0 };
   let isGenerating = false;
@@ -521,6 +674,7 @@
     if (isGenerating) return;
 
     // ต้อง login ก่อนถึงจะเจนรูปได้ — เช็ค token ซ้ำอีกรอบเผื่อ session หมดอายุระหว่างใช้งาน
+    if (PREVIEW_MODE) { setStatus('ℹ️ โหมดพรีวิว: ยังไม่ได้เชื่อมต่อ Backend จึงสร้างภาพจริงไม่ได้', 'error'); return; }
     const s = getSession();
     if (!s || !s.access_token) { window.location.href = 'login.html'; return; }
 
@@ -546,8 +700,8 @@
     setStatus('กำลังสร้างภาพ กรุณารอสักครู่...');
 
     try {
-      // ยิงผ่าน Backend (/api/image/generate) แทนการยิงตรงไป Forge Neo
-      // Backend จะเป็นคนต่อไปหา AI Service เอง พร้อมบันทึกประวัติ/ตรวจสอบสิทธิ์ผู้ใช้
+      // ยิงไปที่ Backend (/api/image/generate) — Backend ตรวจ token, บันทึกประวัติลง DB
+      // แล้วส่งต่อให้ AI Service -> Forge Neo  request นี้ค้างรอจนรูปเสร็จ (อาจนานหลายนาทีถ้ามีคิว)
       const payload = { prompt: pos, negative_prompt: neg, steps, width: w, height: h, seed };
       const res = await fetch(BACKEND_URL + '/api/image/generate', {
         method: 'POST',
@@ -573,7 +727,7 @@
 
       const data = await res.json();
       // data มาจาก ImageTask.to_dict() ของ Backend: { id, status, image_url, ... }
-      // image_url ตอนนี้เก็บเป็น base64 string ของรูป (ไม่ใช่ URL จริง)
+      // image_url เป็น base64 string ของรูป (ไม่ใช่ URL จริง) จึงต้องต่อ prefix data:image/png;base64,
       if (!data.image_url) throw new Error('Backend ไม่ได้ส่งรูปกลับมา (status: ' + data.status + ')');
       generated = [{ src: 'data:image/png;base64,' + data.image_url, prompt: promptForCard }];
       renderGenerated();
@@ -676,8 +830,12 @@
   }
   function closeModal(e) { if (!e || e.target.id === 'modal' || e.target.classList.contains('close')) document.getElementById('modal').classList.remove('open'); }
 
-  /* ═══════════ IMAGE EDIT (erase / reset / crop) ═══════════ */
-  const MAX_EDIT_DIM = 320;
+  /* ═══════════ IMAGE EDIT (reset / erase / crop / adjust / rotate) ═══════════
+     ทำงานใน browser ล้วนๆ บน <canvas> — ไม่ผ่าน Backend/AI Service และไม่บันทึกลง DB
+     editCanvas = ภาพที่กำลังแก้ (แสดงผล), baseCanvas = ภาพเดียวกันแต่ไม่มีรอยลบ (ให้ Smart Select วิเคราะห์)
+     ทุกเครื่องมือที่เปลี่ยนภาพต้องเรียก pushHistory() เพื่อให้ "ย้อนกลับ" ได้ (เก็บสูงสุด 15 ขั้น) */
+  const MAX_EDIT_DIM = 1344;     // ขนาดพิกเซลจริงสูงสุดของภาพที่แก้ (ไฟล์ที่ดาวน์โหลดได้ขนาดนี้) — เท่ากับขนาดใหญ่สุดที่เจนได้
+  const MAX_EDIT_DISPLAY = 440;  // ขนาดสูงสุดที่แสดงบนหน้าจอ (CSS px) — ภาพที่ใหญ่กว่านี้ถูกย่อเฉพาะตอนแสดงผล
 
   let editCanvas, editCtx, baseCanvas, baseCtx;
   let smartOverlayCanvas, smartOverlayCtx;
@@ -695,6 +853,22 @@
   let scribblePts = [];       // points of the stroke currently being dragged (canvas px)
   let smartMask = null;       // Float32Array [0,1], length W*H, from the segmenter
   let smartThreshold = 0.5;
+
+  // ตั้งขนาดที่แสดงบนจอของ canvas ทั้งชุด จากขนาดพิกเซลจริง (w, h) โดยย่อให้ไม่เกิน MAX_EDIT_DISPLAY
+  function setEditDisplaySize(w, h) {
+    const s = Math.min(MAX_EDIT_DISPLAY / w, MAX_EDIT_DISPLAY / h, 1);
+    const dw = Math.round(w * s) + 'px', dh = Math.round(h * s) + 'px';
+    editCanvas.style.width = dw; editCanvas.style.height = dh;
+    smartOverlayCanvas.style.width = dw; smartOverlayCanvas.style.height = dh;
+    const wrap = document.getElementById('canvas-wrap');
+    wrap.style.width = dw; wrap.style.height = dh;
+  }
+
+  // จำนวนพิกเซลจริงของ canvas ต่อ 1 px บนหน้าจอ (>1 เมื่อภาพถูกย่อตอนแสดงผล)
+  function editScale() {
+    const r = editCanvas.getBoundingClientRect();
+    return r.width ? editCanvas.width / r.width : 1;
+  }
 
   function handleEditDrop(e) {
     e.preventDefault();
@@ -725,7 +899,6 @@
 
       editCanvas = document.getElementById('edit-canvas');
       editCanvas.width = w; editCanvas.height = h;
-      editCanvas.style.width = w + 'px'; editCanvas.style.height = h + 'px';
       editCtx = editCanvas.getContext('2d');
       editCtx.clearRect(0, 0, w, h);
       editCtx.drawImage(img, 0, 0, w, h);
@@ -737,11 +910,9 @@
 
       smartOverlayCanvas = document.getElementById('smart-overlay');
       smartOverlayCanvas.width = w; smartOverlayCanvas.height = h;
-      smartOverlayCanvas.style.width = w + 'px'; smartOverlayCanvas.style.height = h + 'px';
       smartOverlayCtx = smartOverlayCanvas.getContext('2d');
 
-      document.getElementById('canvas-wrap').style.width = w + 'px';
-      document.getElementById('canvas-wrap').style.height = h + 'px';
+      setEditDisplaySize(w, h);
 
       editHistory = [];
       pushHistory();
@@ -776,12 +947,9 @@
   function restoreState(state, resetHistoryStack) {
     cancelSmartSelection();
     editCanvas.width = state.w; editCanvas.height = state.h;
-    editCanvas.style.width = state.w + 'px'; editCanvas.style.height = state.h + 'px';
     baseCanvas.width = state.w; baseCanvas.height = state.h;
     smartOverlayCanvas.width = state.w; smartOverlayCanvas.height = state.h;
-    smartOverlayCanvas.style.width = state.w + 'px'; smartOverlayCanvas.style.height = state.h + 'px';
-    document.getElementById('canvas-wrap').style.width = state.w + 'px';
-    document.getElementById('canvas-wrap').style.height = state.h + 'px';
+    setEditDisplaySize(state.w, state.h);
 
     const eImg = new Image();
     eImg.onload = () => editCtx.drawImage(eImg, 0, 0);
@@ -792,11 +960,105 @@
 
     if (resetHistoryStack) { editHistory = [state]; }
     document.getElementById('undo-btn').disabled = editHistory.length <= 1;
+    resetAdjustControls();
+  }
+
+  /* ── ปรับแสง / ฟิลเตอร์สี ──
+     ระหว่างเลื่อนแถบจะแสดงผลด้วย CSS filter บน canvas (ยังไม่แก้พิกเซลจริง)
+     กด "ใช้การปรับสี" ถึงจะวาดลง canvas จริงด้วย ctx.filter แล้วบันทึกลง history */
+  const ADJUST_DEFAULT = { brightness: 100, contrast: 100, saturate: 100, preset: 'none' };
+  let adjust = { ...ADJUST_DEFAULT };
+
+  function isAdjustDefault() {
+    return adjust.brightness === 100 && adjust.contrast === 100 && adjust.saturate === 100 && adjust.preset === 'none';
+  }
+
+  function adjustFilterString() {
+    let f = `brightness(${adjust.brightness}%) contrast(${adjust.contrast}%) saturate(${adjust.saturate}%)`;
+    if (adjust.preset === 'grayscale') f += ' grayscale(100%)';
+    if (adjust.preset === 'sepia') f += ' sepia(100%)';
+    return f;
+  }
+
+  function previewAdjust() {
+    if (editCanvas) editCanvas.style.filter = isAdjustDefault() ? '' : adjustFilterString();
+  }
+
+  function updateAdjust(key, v) {
+    adjust[key] = parseInt(v);
+    document.getElementById('adj-' + key + '-val').textContent = v + '%';
+    previewAdjust();
+  }
+
+  function setAdjustPreset(preset) {
+    adjust.preset = preset;
+    ['none', 'grayscale', 'sepia'].forEach(p =>
+      document.getElementById('preset-' + p).classList.toggle('active', p === preset));
+    previewAdjust();
+  }
+
+  function resetAdjustControls() {
+    adjust = { ...ADJUST_DEFAULT };
+    ['brightness', 'contrast', 'saturate'].forEach(k => {
+      document.getElementById('adj-' + k).value = 100;
+      document.getElementById('adj-' + k + '-val').textContent = '100%';
+    });
+    setAdjustPreset('none'); // เรียก previewAdjust() ให้ด้วย จึงล้าง CSS filter ออก
+  }
+
+  function applyAdjust() {
+    if (!editCanvas || isAdjustDefault()) return;
+    if (!('filter' in editCtx)) { alert('เบราว์เซอร์นี้ยังไม่รองรับการปรับสี กรุณาใช้ Chrome, Edge หรือ Firefox'); return; }
+    const f = adjustFilterString();
+    // ปรับทั้งภาพที่แก้อยู่ และ baseCanvas (ภาพที่ Smart Select ใช้วิเคราะห์) ให้ตรงกัน
+    [[editCanvas, editCtx], [baseCanvas, baseCtx]].forEach(([cv, ctx]) => {
+      const tmp = document.createElement('canvas');
+      tmp.width = cv.width; tmp.height = cv.height;
+      const t = tmp.getContext('2d');
+      t.filter = f;
+      t.drawImage(cv, 0, 0);
+      ctx.clearRect(0, 0, cv.width, cv.height);
+      ctx.drawImage(tmp, 0, 0);
+    });
+    resetAdjustControls();
+    pushHistory();
+  }
+
+  /* ── หมุน / พลิกภาพ ── กดแล้วใช้ทันที (บันทึกลง history ให้ undo ได้) */
+  function transformEdit(kind) {
+    if (!editCanvas) return;
+    cancelSmartSelection();
+    const w = editCanvas.width, h = editCanvas.height;
+    const rotate = kind === 'rotate-left' || kind === 'rotate-right';
+    const nw = rotate ? h : w, nh = rotate ? w : h;
+
+    // หมุน/พลิกทั้งภาพที่แก้อยู่ และ baseCanvas (ภาพที่ Smart Select ใช้) ให้ตรงกัน
+    [[editCanvas, editCtx], [baseCanvas, baseCtx]].forEach(([cv, ctx]) => {
+      const tmp = document.createElement('canvas');
+      tmp.width = w; tmp.height = h;
+      tmp.getContext('2d').drawImage(cv, 0, 0);
+
+      cv.width = nw; cv.height = nh; // เปลี่ยนขนาด = ล้าง canvas และ transform ด้วย
+      ctx.save();
+      if (kind === 'rotate-right') { ctx.translate(nw, 0); ctx.rotate(Math.PI / 2); }
+      else if (kind === 'rotate-left') { ctx.translate(0, nh); ctx.rotate(-Math.PI / 2); }
+      else if (kind === 'flip-h') { ctx.translate(nw, 0); ctx.scale(-1, 1); }
+      else if (kind === 'flip-v') { ctx.translate(0, nh); ctx.scale(1, -1); }
+      ctx.drawImage(tmp, 0, 0);
+      ctx.restore();
+    });
+
+    smartOverlayCanvas.width = nw; smartOverlayCanvas.height = nh;
+    setEditDisplaySize(nw, nh);
+
+    pushHistory();
   }
 
   function updateHint() {
     let text;
     if (editTool === 'crop') text = "ลากบนภาพเพื่อเลือกพื้นที่ แล้วกดยืนยันครอป";
+    else if (editTool === 'rotate') text = "กดปุ่มด้านบนเพื่อหมุนหรือพลิกภาพ — ใช้ทันที กดย้อนกลับได้";
+    else if (editTool === 'adjust') text = "เลื่อนแถบหรือเลือกฟิลเตอร์เพื่อดูตัวอย่าง แล้วกด \"ใช้การปรับสี\"";
     else if (eraseMode === 'smart') text = "ลากเส้นทับวัตถุที่ต้องการลบ แล้วปล่อย — AI จะเลือกให้อัตโนมัติ";
     else text = "แปรงทับส่วนของภาพที่ต้องการลบออก — จะถูกลบให้โปร่งใส";
     document.getElementById('edit-hint').textContent = text;
@@ -806,6 +1068,13 @@
     editTool = tool;
     document.getElementById('tool-erase').classList.toggle('active', tool === 'erase');
     document.getElementById('tool-crop').classList.toggle('active', tool === 'crop');
+    document.getElementById('tool-adjust').classList.toggle('active', tool === 'adjust');
+    document.getElementById('tool-rotate').classList.toggle('active', tool === 'rotate');
+    document.getElementById('rotate-row').classList.toggle('show', tool === 'rotate');
+    document.getElementById('adjust-panel').classList.toggle('show', tool === 'adjust');
+    document.getElementById('adjust-apply-btn').style.display = tool === 'adjust' ? 'block' : 'none';
+    document.getElementById('adjust-clear-btn').style.display = tool === 'adjust' ? 'block' : 'none';
+    if (tool !== 'adjust') resetAdjustControls(); // ออกจากเครื่องมือโดยไม่กดใช้ = ยกเลิกตัวอย่าง
     document.getElementById('erase-mode-row').classList.toggle('show', tool === 'erase');
     document.getElementById('brush-row').classList.toggle('show', tool === 'erase' && eraseMode === 'manual');
     document.getElementById('threshold-row').classList.toggle('show', tool === 'erase' && eraseMode === 'smart');
@@ -855,7 +1124,9 @@
     const rect = editCanvas.getBoundingClientRect();
     const cx = (evt.touches ? evt.touches[0].clientX : evt.clientX) - rect.left;
     const cy = (evt.touches ? evt.touches[0].clientY : evt.clientY) - rect.top;
-    return { x: cx, y: cy, rect };
+    // x, y = ตำแหน่งในพิกเซลจริงของ canvas (ใช้วาด/ลบ), cssX, cssY = ตำแหน่งบนหน้าจอ (ใช้วางกรอบครอป)
+    const k = rect.width ? editCanvas.width / rect.width : 1;
+    return { x: cx * k, y: cy * k, cssX: cx, cssY: cy, k, rect };
   }
 
   function drawAt(x, y) {
@@ -863,7 +1134,7 @@
       editCtx.save();
       editCtx.globalCompositeOperation = 'destination-out';
       editCtx.beginPath();
-      editCtx.arc(x, y, brushSize / 2, 0, Math.PI * 2);
+      editCtx.arc(x, y, brushSize / 2 * editScale(), 0, Math.PI * 2); // ขนาดแปรงนับเป็น px บนหน้าจอ
       editCtx.fill();
       editCtx.restore();
     }
@@ -875,12 +1146,12 @@
     if (!scribblePts.length) return;
     smartOverlayCtx.strokeStyle = 'rgba(143,207,232,0.95)';
     smartOverlayCtx.fillStyle = 'rgba(143,207,232,0.95)';
-    smartOverlayCtx.lineWidth = 3;
+    smartOverlayCtx.lineWidth = 3 * editScale();
     smartOverlayCtx.lineCap = 'round';
     smartOverlayCtx.lineJoin = 'round';
     if (scribblePts.length === 1) {
       smartOverlayCtx.beginPath();
-      smartOverlayCtx.arc(scribblePts[0].x, scribblePts[0].y, 3, 0, Math.PI * 2);
+      smartOverlayCtx.arc(scribblePts[0].x, scribblePts[0].y, 3 * editScale(), 0, Math.PI * 2);
       smartOverlayCtx.fill();
       return;
     }
@@ -958,13 +1229,14 @@
   function bindCanvasEvents() {
     editCanvas.onpointerdown = (e) => {
       e.preventDefault();
+      if (editTool === 'adjust' || editTool === 'rotate') return; // เครื่องมือนี้ไม่ใช้การลากบนภาพ
       editCanvas.setPointerCapture && editCanvas.setPointerCapture(e.pointerId);
-      const { x, y } = getCanvasPos(e);
+      const { x, y, cssX, cssY } = getCanvasPos(e);
       if (editTool === 'crop') {
-        cropStart = { x, y };
+        cropStart = { x: cssX, y: cssY };
         const overlay = document.getElementById('crop-overlay');
         overlay.style.display = 'block';
-        overlay.style.left = x + 'px'; overlay.style.top = y + 'px';
+        overlay.style.left = cssX + 'px'; overlay.style.top = cssY + 'px';
         overlay.style.width = '0px'; overlay.style.height = '0px';
       } else if (editTool === 'erase' && eraseMode === 'smart') {
         if (smartModelState !== 'ready') { ensureSmartModelLoaded(); return; }
@@ -978,14 +1250,14 @@
       }
     };
     editCanvas.onpointermove = (e) => {
-      const { x, y } = getCanvasPos(e);
+      const { x, y, cssX, cssY, k } = getCanvasPos(e);
       if (editTool === 'crop' && cropStart) {
-        const left = Math.min(cropStart.x, x), top = Math.min(cropStart.y, y);
-        const w = Math.abs(x - cropStart.x), h = Math.abs(y - cropStart.y);
+        const left = Math.min(cropStart.x, cssX), top = Math.min(cropStart.y, cssY);
+        const w = Math.abs(cssX - cropStart.x), h = Math.abs(cssY - cropStart.y);
         const overlay = document.getElementById('crop-overlay');
         overlay.style.left = left + 'px'; overlay.style.top = top + 'px';
         overlay.style.width = w + 'px'; overlay.style.height = h + 'px';
-        cropRectPx = { x: left, y: top, w, h };
+        cropRectPx = { x: left * k, y: top * k, w: w * k, h: h * k }; // แปลงเป็นพิกเซลจริงของ canvas
       } else if (editTool === 'erase' && eraseMode === 'smart' && isScribbling) {
         const last = scribblePts[scribblePts.length - 1];
         const dx = x - last.x, dy = y - last.y;
@@ -1008,23 +1280,22 @@
     if (!cropRectPx || cropRectPx.w < 8 || cropRectPx.h < 8) { alert('ลากบนภาพก่อนเพื่อเลือกพื้นที่ที่จะครอป'); return; }
     cancelSmartSelection();
     const { x, y, w, h } = cropRectPx;
-    const rx = Math.round(x), ry = Math.round(y), rw = Math.round(w), rh = Math.round(h);
+    // ปัดเป็นจำนวนเต็ม และไม่ให้กรอบเกินขอบภาพ
+    const rx = Math.max(0, Math.round(x)), ry = Math.max(0, Math.round(y));
+    const rw = Math.min(Math.round(w), editCanvas.width - rx), rh = Math.min(Math.round(h), editCanvas.height - ry);
 
     const editData = editCtx.getImageData(rx, ry, rw, rh);
     const baseData = baseCtx.getImageData(rx, ry, rw, rh);
 
     editCanvas.width = rw; editCanvas.height = rh;
-    editCanvas.style.width = rw + 'px'; editCanvas.style.height = rh + 'px';
     editCtx.putImageData(editData, 0, 0);
 
     baseCanvas.width = rw; baseCanvas.height = rh;
     baseCtx.putImageData(baseData, 0, 0);
 
     smartOverlayCanvas.width = rw; smartOverlayCanvas.height = rh;
-    smartOverlayCanvas.style.width = rw + 'px'; smartOverlayCanvas.style.height = rh + 'px';
 
-    document.getElementById('canvas-wrap').style.width = rw + 'px';
-    document.getElementById('canvas-wrap').style.height = rh + 'px';
+    setEditDisplaySize(rw, rh);
     document.getElementById('crop-overlay').style.display = 'none';
     cropStart = null; cropRectPx = null;
 
@@ -1032,6 +1303,8 @@
   }
 
   function downloadEdit() {
+    // ถ้ายังมีการปรับสีที่แสดงตัวอย่างค้างอยู่ ให้ใช้จริงก่อน ไม่งั้นไฟล์ที่ได้จะไม่ตรงกับที่เห็น
+    if (editTool === 'adjust' && !isAdjustDefault()) applyAdjust();
     const a = document.createElement('a');
     a.href = editCanvas.toDataURL('image/png');
     a.download = 'edited_' + Date.now() + '.png';

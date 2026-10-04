@@ -17,6 +17,8 @@ def _int_or_default(value, default):
 @image_bp.route('/generate', methods=['POST'])
 @jwt_required()
 def generate_image():
+    # รับ {prompt, negative_prompt, steps, width, height, seed} จาก Frontend
+    # request นี้รอจน AI Service เจนรูปเสร็จ (รวมเวลารอคิว) แล้วตอบ ImageTask.to_dict() กลับไป
     user_id = int(get_jwt_identity())
     data = request.get_json() or {}
     prompt = data.get('prompt')

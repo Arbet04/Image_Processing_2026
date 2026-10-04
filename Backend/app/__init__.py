@@ -1,5 +1,4 @@
-import os
-from flask import Flask
+from flask import Flask, jsonify
 from app.config import Config
 from app.extensions import db, jwt, cors, setup_logger
 
@@ -21,6 +20,11 @@ def create_app(config_class=Config):
 
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(image_bp, url_prefix='/api/image')
+
+    # เช็คว่า Backend ทำงานอยู่ (ไม่ต้อง login) — ใช้ทดสอบว่า nginx ส่งต่อ /api/ มาถึง Backend
+    @app.route('/api/health', methods=['GET'])
+    def health_check():
+        return jsonify({'status': 'ok', 'service': 'Image Processing Backend'}), 200
 
     if app.config['JWT_SECRET_KEY'] == 'dev-jwt-secret-key' or app.config['SECRET_KEY'] == 'dev-secret-key':
         app.logger.warning("SECRET_KEY/JWT_SECRET_KEY ยังเป็นค่า default — ตั้งค่าใน .env ก่อนใช้งานจริง ไม่งั้นใครก็ปลอม token ได้")
