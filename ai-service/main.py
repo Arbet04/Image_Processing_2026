@@ -14,44 +14,44 @@ Endpoint ที่มี:
 ทดสอบ: เปิด http://127.0.0.1:8001/docs
 """
 
-from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi import FastAPI, HTTPException  # ← FastAPI = ตัวแอป, HTTPException = ตอบ error พร้อม status code
+from fastapi.middleware.cors import CORSMiddleware  # ← ตัวจัดการ CORS
 
-from models import GenerateRequest, GenerateResponse, HealthResponse
-from forge_client import check_health, ForgeConnectionError, ForgeGenerationError
-from queue_manager import enqueue_generate, QueueFullError
-from config import FORGE_BASE_URL
+from models import GenerateRequest, GenerateResponse, HealthResponse  # ← รูปแบบข้อมูลเข้า/ออก
+from forge_client import check_health, ForgeConnectionError, ForgeGenerationError  # ← ฟังก์ชันเช็ค Forge และ error 2 ชนิด
+from queue_manager import enqueue_generate, QueueFullError  # ← ฟังก์ชันต่อคิว และ error คิวเต็ม
+from config import FORGE_BASE_URL  # ← URL ของ Forge
 
-app = FastAPI(
-    title="Image Processing 2026 - AI Service",
-    description="ห่อ API ของ Forge Neo ให้ทีมอื่นเรียกใช้ง่ายขึ้น",
-    version="0.2.0",
+app = FastAPI(  # ← สร้างแอป (คำสั่ง uvicorn main:app ชี้มาที่ตัวแปรนี้)
+    title="Image Processing 2026 - AI Service",  # ← ชื่อที่แสดงในหน้า /docs
+    description="ห่อ API ของ Forge Neo ให้ทีมอื่นเรียกใช้ง่ายขึ้น",  # ← คำอธิบายในหน้า /docs
+    version="0.2.0",  # ← เวอร์ชันในหน้า /docs
 )
 
 # เปิด CORS กว้างๆ ไว้เพื่อให้หน้าทดสอบ test-forge-api.html เรียกจาก browser ได้
 # (Flask backend เรียกแบบ server-to-server ไม่เกี่ยวกับ CORS / หน้าเว็บหลักไม่ได้เรียก service นี้ตรงๆ)
 # service นี้ไม่มีการตรวจ login — ตอน deploy จริงควรให้เฉพาะเครื่อง Backend เข้าถึง port 8001 ได้
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
+app.add_middleware(  # ← ติดตั้งชั้นที่ทุกคำขอต้องผ่านก่อนถึง endpoint
+    CORSMiddleware,  # ← อนุญาตให้หน้าเว็บจากที่อื่นเรียก API นี้ได้
+    allow_origins=["*"],  # ← ทุกที่มา
+    allow_methods=["*"],  # ← ทุก method (GET, POST, ...)
+    allow_headers=["*"],  # ← ทุก header
 )
 
 
-@app.get("/health", response_model=HealthResponse)
-async def health():
+@app.get("/health", response_model=HealthResponse)  # ← ผูกฟังก์ชันด้านล่างกับ GET /health
+async def health():  # ← เช็คว่าต่อ Forge ได้ไหม
     """
     เช็คว่า service นี้เชื่อม Forge Neo ได้อยู่ไหม ใช้ debug ตอนอะไรๆ ไม่ทำงาน
 
     ส่งงานต่อไปที่: check_health() ในไฟล์ forge_client.py
     """
-    reachable = await check_health()
-    return HealthResponse(forge_reachable=reachable, forge_url=FORGE_BASE_URL)
+    reachable = await check_health()  # ← ถาม Forge ว่ายังอยู่ไหม
+    return HealthResponse(forge_reachable=reachable, forge_url=FORGE_BASE_URL)  # ← FastAPI แปลงเป็น JSON ให้
 
 
-@app.post("/generate", response_model=GenerateResponse)
-async def generate(req: GenerateRequest):
+@app.post("/generate", response_model=GenerateResponse)  # ← ผูกฟังก์ชันด้านล่างกับ POST /generate
+async def generate(req: GenerateRequest):  # ← FastAPI ตรวจข้อมูลให้ก่อนเข้าฟังก์ชัน (ผิด = ตอบ 422)
     """
     Endpoint หลักของทั้งระบบ — รับ prompt จาก client (Flask backend:
     Backend/app/services/ai_client.py) แล้วสร้างรูปกลับไปให้
@@ -63,28 +63,28 @@ async def generate(req: GenerateRequest):
                     (ซึ่งข้างในจะไปเรียก generate_image() ในไฟล์ forge_client.py
                     อีกทีหนึ่ง เพื่อคุยกับ Forge Neo จริงๆ)
     """
-    try:
-        result = await enqueue_generate(req)
-        return GenerateResponse(
-            success=True,
-            image_base64=result["image_base64"],
-            elapsed_seconds=result["elapsed_seconds"],
+    try:  # ← ลองเจนรูป ถ้าพลาดไปที่ except ตามชนิดของปัญหา
+        result = await enqueue_generate(req)  # ← เข้าคิว แล้วรอจนได้รูป (await = คืนการทำงานให้ event loop ระหว่างรอ)
+        return GenerateResponse(  # ← ตอบ 200 พร้อมรูป
+            success=True,  # ← สำเร็จ
+            image_base64=result["image_base64"],  # ← รูปแบบ base64
+            elapsed_seconds=result["elapsed_seconds"],  # ← เวลาที่ใช้เจน
         )
 
-    except QueueFullError as e:
+    except QueueFullError as e:  # ← คิวเต็ม
         # คิวเต็ม — ตอบ 503 ทันทีแทนการให้ client รอจน timeout
-        raise HTTPException(status_code=503, detail=str(e))
+        raise HTTPException(status_code=503, detail=str(e))  # ← ตอบ 503 พร้อมข้อความใน detail
 
-    except ForgeConnectionError as e:
+    except ForgeConnectionError as e:  # ← ต่อ Forge ไม่ได้ หรือหมดเวลา
         # Forge Neo ไม่ได้เปิดอยู่ หรือ timeout — ส่ง 503 (Service Unavailable) กลับไป
-        raise HTTPException(status_code=503, detail=str(e))
+        raise HTTPException(status_code=503, detail=str(e))  # ← ตอบ 503
 
-    except ForgeGenerationError as e:
+    except ForgeGenerationError as e:  # ← Forge เจนไม่สำเร็จ
         # Forge Neo เปิดอยู่แต่ generate ไม่สำเร็จ — ส่ง 502 (Bad Gateway) กลับไป
-        raise HTTPException(status_code=502, detail=str(e))
+        raise HTTPException(status_code=502, detail=str(e))  # ← ตอบ 502
 
 
-@app.get("/")
-async def root():
+@app.get("/")  # ← ผูกฟังก์ชันด้านล่างกับ GET /
+async def root():  # ← หน้าแรก
     """หน้าแรกไว้เช็คเฉยๆ ว่า service รันอยู่ ไม่ได้ทำงานอะไรต่อ"""
-    return {"message": "AI Service กำลังทำงาน ไปที่ /docs เพื่อทดสอบ API"}
+    return {"message": "AI Service กำลังทำงาน ไปที่ /docs เพื่อทดสอบ API"}  # ← บอกว่า service รันอยู่

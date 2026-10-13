@@ -13,28 +13,28 @@ Forge Neo error ได้ ไฟล์นี้ทำหน้าที่บั
 ถ้าเกินจะโยน QueueFullError ทันที (main.py ตอบ 503) แทนการให้ client รอจนหมดเวลา
 """
 
-import asyncio
-import logging
-from models import GenerateRequest
-from forge_client import generate_image
-from config import MAX_QUEUE_SIZE
+import asyncio  # ← ไลบรารี async ของ Python
+import logging  # ← ใช้เขียน log
+from models import GenerateRequest  # ← รูปแบบคำขอ
+from forge_client import generate_image  # ← ฟังก์ชันที่เจนรูปจริง
+from config import MAX_QUEUE_SIZE  # ← จำนวนงานที่รอคิวได้สูงสุด
 
-logger = logging.getLogger("uvicorn.error")
+logger = logging.getLogger("uvicorn.error")  # ← ใช้ logger ของ uvicorn ให้ log ขึ้น terminal เดียวกัน
 
 # ค่า 1 หมายถึง "อนุญาตให้มีแค่ 1 งานทำพร้อมกันได้เท่านั้น" งานที่มาทีหลัง
 # จะถูกทำให้รอโดยอัตโนมัติที่บรรทัด "async with" ด้านล่าง ไม่ต้องเขียน logic คิวเอง
-_generation_lock = asyncio.Semaphore(1)
+_generation_lock = asyncio.Semaphore(1)  # ← กุญแจ 1 ดอก = เจนได้ทีละ 1 งาน
 
 # จำนวนงานที่อยู่ในระบบตอนนี้ (กำลังทำ 1 + รอคิว) — ใช้ตัดสินว่าคิวเต็มหรือยัง
-_pending = 0
+_pending = 0  # ← จำนวนงานในระบบ (กำลังเจน + รอคิว)
 
 
-class QueueFullError(Exception):
+class QueueFullError(Exception):  # ← error เมื่อคิวเต็ม (main.py ตอบ 503)
     """โยนเมื่อคิวเต็ม main.py จะแปลงเป็น HTTP 503 ให้ client ลองใหม่ภายหลัง"""
-    pass
+    pass  # ← ไม่มีโค้ดเพิ่ม
 
 
-async def enqueue_generate(req: GenerateRequest) -> dict:
+async def enqueue_generate(req: GenerateRequest) -> dict:  # ← ประตูเดียวที่ทุกงานต้องผ่าน
     """
     จุดเดียวที่ main.py เรียกใช้ตอนจะสร้างรูป (แทนที่จะเรียก generate_image()
     ตรงๆ) เพื่อให้งานทุกงานต้องผ่านการ "ต่อคิว" นี้ก่อนเสมอ
@@ -45,18 +45,18 @@ async def enqueue_generate(req: GenerateRequest) -> dict:
                            ในไฟล์ forge_client.py ให้ไปทำงานสร้างรูปจริง
                            แล้วส่งผลลัพธ์กลับไปให้ main.py ต่อ
     """
-    global _pending
-    if _pending >= MAX_QUEUE_SIZE + 1:
-        raise QueueFullError(f"คิวเต็ม (มีงานรออยู่ {_pending - 1} งาน) กรุณาลองใหม่ภายหลัง")
+    global _pending  # ← ขอแก้ตัวแปร _pending ที่อยู่นอกฟังก์ชัน
+    if _pending >= MAX_QUEUE_SIZE + 1:  # ← มีงานครบแล้วหรือยัง (กำลังเจน 1 + รอ 3 = 4) — ไม่มี await คั่น event loop จึงไม่สลับงานกลางทาง
+        raise QueueFullError(f"คิวเต็ม (มีงานรออยู่ {_pending - 1} งาน) กรุณาลองใหม่ภายหลัง")  # ← ปฏิเสธทันที งานนี้ไม่ได้เข้าคิว
 
-    _pending += 1
-    logger.info(f"Task {req.task_id} queued (in system: {_pending})")
-    try:
-        async with _generation_lock:
+    _pending += 1  # ← นับเพิ่ม 1 งาน
+    logger.info(f"Task {req.task_id} queued (in system: {_pending})")  # ← log ว่าเข้าคิวแล้ว
+    try:  # ← คู่กับ finally ด้านล่าง
+        async with _generation_lock:  # ← ขอกุญแจ ถ้ามีงานอื่นถืออยู่จะรอตรงนี้ (รอแบบไม่บล็อก event loop จึงยังรับคำขออื่นได้)
             # โค้ดในบล็อกนี้รับประกันว่ามีแค่ 1 request เท่านั้นที่รันอยู่ในเวลาเดียวกัน
             # request อื่นที่เข้ามาพร้อมกันจะ "ค้างรอ" อยู่ตรงบรรทัด async with ด้านบน
             # โดยอัตโนมัติ จนกว่างานนี้จะทำเสร็จ (ออกจาก block นี้)
-            logger.info(f"Task {req.task_id} started")
-            return await generate_image(req)
-    finally:
-        _pending -= 1
+            logger.info(f"Task {req.task_id} started")  # ← log ว่าถึงคิวแล้ว
+            return await generate_image(req)  # ← เจนรูป แล้วส่งผลกลับให้ main.py
+    finally:  # ← ทำเสมอ ทั้งตอนสำเร็จและตอน error
+        _pending -= 1  # ← นับลด 1 งาน
