@@ -29,7 +29,7 @@ class ForgeGenerationError(Exception):  # ← ต่อได้ แต่ Forge
     (เช่น checkpoint หาย, parameter ผิด, ไม่มีรูปกลับมา)
     ไฟล์ main.py จะจับ exception นี้แล้วตอบกลับเป็น HTTP 502
     """
-    pass  # ← ไม่มีโค้ดเพิ่ม
+    pass  # ← ไม่มีโค้ดเพิ่ม ใช้แค่ชื่อคลาสบอกชนิดของปัญหา
 
 
 async def check_health() -> bool:  # ← เช็คว่า Forge ยังตอบอยู่ไหม คืน True/False
@@ -39,9 +39,9 @@ async def check_health() -> bool:  # ← เช็คว่า Forge ยัง�
     ใครเรียกใช้ฟังก์ชันนี้: main.py -> endpoint GET /health
     ฟังก์ชันนี้ส่งต่อไปไหน: ไม่มี ทำงานจบในตัวเอง แค่คืนค่า True/False กลับไป
     """
-    try:  # ← ลองทำ ถ้าพลาดไปที่ except
+    try:  # ← ลองถาม Forge ถ้าต่อไม่ได้ไปที่ except
         async with httpx.AsyncClient(timeout=5) as client:  # ← ตัวส่ง HTTP ชั่วคราว รอได้ 5 วินาที
-            resp = await client.get(f"{FORGE_BASE_URL}/sdapi/v1/options")  # ← ถาม Forge (await = รอคำตอบ)
+            resp = await client.get(f"{FORGE_BASE_URL}/sdapi/v1/options")  # ← ถาม Forge ที่ /sdapi/v1/options (await = รอคำตอบ)
             return resp.status_code == 200  # ← ตอบ 200 = พร้อมใช้งาน
     except httpx.RequestError:  # ← ต่อไม่ได้ ไม่ว่าด้วยเหตุผลใด
         # เชื่อมต่อไม่ได้ไม่ว่าด้วยเหตุผลอะไร (ปิดเครื่อง, ผิด URL, ฯลฯ) ถือว่าไม่พร้อมใช้งาน
@@ -77,7 +77,7 @@ async def generate_image(req: GenerateRequest) -> dict:  # ← ฟังก์�
         async with httpx.AsyncClient(timeout=FORGE_TIMEOUT_SECONDS) as client:  # ← รอได้นานสุดตามค่าใน config (300 วินาที)
             resp = await client.post(f"{FORGE_BASE_URL}/sdapi/v1/txt2img", json=payload)  # ← ส่งไป Forge แล้วรอจน GPU เจนเสร็จ (ระหว่าง await นี้ event loop ไปทำงานอื่นได้)
 
-    except httpx.ConnectError:  # ← หา Forge ไม่เจอ
+    except httpx.ConnectError:  # ← หา Forge ไม่เจอ เช่น ยังไม่ได้เปิด หรือผิด port
         # กรณีที่ 1: หา Forge Neo ไม่เจอเลย (ปิดเครื่องอยู่ / ผิดพอร์ต)
         raise ForgeConnectionError(  # ← โยนปัญหาขึ้นไปให้ main.py
             f"เชื่อมต่อ Forge Neo ไม่ได้ที่ {FORGE_BASE_URL} — เช็คว่าเปิด Forge Neo ทิ้งไว้หรือยัง"
@@ -103,7 +103,7 @@ async def generate_image(req: GenerateRequest) -> dict:  # ← ฟังก์�
 
     # ส่งผลลัพธ์กลับเป็น dict ธรรมดา (ไม่ใช่ Pydantic model) เพราะจุดนี้เป็นแค่
     # ข้อมูลภายในที่ queue_manager.py กับ main.py จะเอาไปแปลงเป็น response เองอีกที
-    return {  # ← ส่งผลกลับให้ queue_manager.py
+    return {  # ← ส่งผลกลับให้ queue_manager.py แล้วต่อไปที่ main.py
         "image_base64": images[0],  # ← รูปแรก (เราขอทีละ 1 รูป)
         "elapsed_seconds": elapsed,  # ← เวลาที่ใช้เจน
     }

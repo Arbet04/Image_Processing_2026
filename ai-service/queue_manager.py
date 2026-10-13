@@ -23,15 +23,15 @@ logger = logging.getLogger("uvicorn.error")  # ← ใช้ logger ของ uv
 
 # ค่า 1 หมายถึง "อนุญาตให้มีแค่ 1 งานทำพร้อมกันได้เท่านั้น" งานที่มาทีหลัง
 # จะถูกทำให้รอโดยอัตโนมัติที่บรรทัด "async with" ด้านล่าง ไม่ต้องเขียน logic คิวเอง
-_generation_lock = asyncio.Semaphore(1)  # ← กุญแจ 1 ดอก = เจนได้ทีละ 1 งาน
+_generation_lock = asyncio.Semaphore(1)  # ← กุญแจ 1 ดอก = เจนได้ทีละ 1 งาน คนที่รอจะได้กุญแจตามลำดับที่มาถึง (FIFO)
 
 # จำนวนงานที่อยู่ในระบบตอนนี้ (กำลังทำ 1 + รอคิว) — ใช้ตัดสินว่าคิวเต็มหรือยัง
-_pending = 0  # ← จำนวนงานในระบบ (กำลังเจน + รอคิว)
+_pending = 0  # ← ตัวนับงานในระบบ (กำลังเจน + รอคิว) เริ่มที่ 0
 
 
 class QueueFullError(Exception):  # ← error เมื่อคิวเต็ม (main.py ตอบ 503)
     """โยนเมื่อคิวเต็ม main.py จะแปลงเป็น HTTP 503 ให้ client ลองใหม่ภายหลัง"""
-    pass  # ← ไม่มีโค้ดเพิ่ม
+    pass  # ← ไม่มีโค้ดเพิ่ม ใช้แค่ชื่อคลาสบอกชนิดของปัญหา
 
 
 async def enqueue_generate(req: GenerateRequest) -> dict:  # ← ประตูเดียวที่ทุกงานต้องผ่าน
@@ -51,12 +51,12 @@ async def enqueue_generate(req: GenerateRequest) -> dict:  # ← ประตู
 
     _pending += 1  # ← นับเพิ่ม 1 งาน
     logger.info(f"Task {req.task_id} queued (in system: {_pending})")  # ← log ว่าเข้าคิวแล้ว
-    try:  # ← คู่กับ finally ด้านล่าง
+    try:  # ← เริ่มบล็อกที่ปิดท้ายด้วย finally (ไม่ว่าเกิดอะไรขึ้น ตัวนับต้องถูกลดคืน)
         async with _generation_lock:  # ← ขอกุญแจ ถ้ามีงานอื่นถืออยู่จะรอตรงนี้ (รอแบบไม่บล็อก event loop จึงยังรับคำขออื่นได้)
             # โค้ดในบล็อกนี้รับประกันว่ามีแค่ 1 request เท่านั้นที่รันอยู่ในเวลาเดียวกัน
             # request อื่นที่เข้ามาพร้อมกันจะ "ค้างรอ" อยู่ตรงบรรทัด async with ด้านบน
             # โดยอัตโนมัติ จนกว่างานนี้จะทำเสร็จ (ออกจาก block นี้)
-            logger.info(f"Task {req.task_id} started")  # ← log ว่าถึงคิวแล้ว
+            logger.info(f"Task {req.task_id} started")  # ← log ว่าถึงคิวแล้ว เริ่มเจน
             return await generate_image(req)  # ← เจนรูป แล้วส่งผลกลับให้ main.py
     finally:  # ← ทำเสมอ ทั้งตอนสำเร็จและตอน error
         _pending -= 1  # ← นับลด 1 งาน

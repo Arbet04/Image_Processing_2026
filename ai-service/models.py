@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field  # ← BaseModel = คลาสแม่�
 from typing import Optional  # ← Optional = ไม่ส่งมาก็ได้ (เป็น None)
 
 
-class GenerateRequest(BaseModel):  # ← รูปแบบคำขอสร้างรูป
+class GenerateRequest(BaseModel):  # ← รูปแบบคำขอสร้างรูป (ข้อมูลที่ Backend ต้องส่งมา)
     """
     รูปแบบข้อมูลที่ client (Flask backend หรือ test-forge-api.html) ต้องส่งมาตอนขอสร้างรูป
     ค่าที่เกินช่วงที่กำหนด (เช่น steps > 150) FastAPI จะตอบ 422 ให้เองก่อนเข้าคิว
@@ -23,7 +23,7 @@ class GenerateRequest(BaseModel):  # ← รูปแบบคำขอสร้
     task_id: Optional[int] = Field(None, description="ID ของ ImageTask ฝั่ง Backend (ใช้ใน log เท่านั้น)")  # ← เลขงานจาก Backend ใช้ใน log เท่านั้น
 
 
-class GenerateResponse(BaseModel):  # ← รูปแบบคำตอบเมื่อสำเร็จ
+class GenerateResponse(BaseModel):  # ← รูปแบบคำตอบเมื่อสำเร็จ (ข้อมูลที่ส่งกลับให้ Backend)
     """
     รูปแบบข้อมูลที่ตอบกลับไปหลังสร้างรูปเสร็จ
     ใช้ใน: main.py -> endpoint POST /generate
@@ -31,7 +31,7 @@ class GenerateResponse(BaseModel):  # ← รูปแบบคำตอบเ�
     กรณี error main.py ตอบเป็น HTTPException ({"detail": "..."}) ไม่ได้ใช้ model นี้
     success จึงเป็น True เสมอ — Backend อ่านรูปจาก image_base64
     """
-    success: bool  # ← True เสมอ
+    success: bool  # ← True เสมอ (ถ้าไม่สำเร็จ main.py ตอบเป็น error แทน ไม่ได้ใช้ model นี้)
     image_base64: Optional[str] = None  # ← รูป PNG แบบ base64
     elapsed_seconds: Optional[float] = None  # ← เวลาที่ Forge ใช้เจน (วินาที) ไม่รวมเวลารอคิว
 
@@ -41,5 +41,5 @@ class HealthResponse(BaseModel):  # ← คำตอบของ GET /health
     รูปแบบข้อมูลที่ตอบกลับตอนเช็คว่า Forge Neo ยังเชื่อมต่ออยู่ไหม
     ใช้ใน: main.py -> endpoint GET /health
     """
-    forge_reachable: bool  # ← ต่อ Forge ได้ไหม
+    forge_reachable: bool  # ← ต่อ Forge ได้ไหม (true/false)
     forge_url: str  # ← URL ของ Forge ที่กำลังใช้

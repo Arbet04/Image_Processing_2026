@@ -172,12 +172,12 @@
     </div>
 
     <div class="auth-tabs" id="auth-tabs">
-      <button class="auth-tab active" id="auth-tab-login" onclick="switchAuthTab('login')">เข้าสู่ระบบ</button>
-      <button class="auth-tab" id="auth-tab-signup" onclick="switchAuthTab('signup')">สมัครสมาชิก</button>
+      <button class="auth-tab active" id="auth-tab-login" onclick="switchAuthTab('login')">เข้าสู่ระบบ</button> <!-- ← กด -> switchAuthTab('login') แสดงฟอร์มเข้าสู่ระบบ -->
+      <button class="auth-tab" id="auth-tab-signup" onclick="switchAuthTab('signup')">สมัครสมาชิก</button> <!-- ← กด -> switchAuthTab('signup') แสดงฟอร์มสมัครสมาชิก -->
     </div>
 
     <!-- LOGIN FORM -->
-    <form class="auth-form active" id="login-form" onsubmit="handleLogin(event)">
+    <form class="auth-form active" id="login-form" onsubmit="handleLogin(event)"> <!-- ← กดปุ่มในฟอร์มนี้ -> handleLogin() -> POST /api/auth/login -> สำเร็จไป index.html -->
       <div class="auth-field">
         <label>ชื่อผู้ใช้งาน</label>
         <input type="text" id="login-username" placeholder="Username" required autocomplete="username">
@@ -191,7 +191,7 @@
     </form>
 
     <!-- SIGNUP FORM -->
-    <form class="auth-form" id="signup-form" onsubmit="handleSignup(event)">
+    <form class="auth-form" id="signup-form" onsubmit="handleSignup(event)"> <!-- ← กดปุ่มในฟอร์มนี้ -> handleSignup() -> POST /api/auth/register -> สำเร็จสลับไปแท็บเข้าสู่ระบบ -->
       <div class="auth-field">
         <label>ชื่อผู้ใช้งาน</label>
         <input type="text" id="signup-name" placeholder="Username" required autocomplete="name">
@@ -217,18 +217,18 @@
   // login สำเร็จจะเก็บ {access_token, user} ลง localStorage แล้วไปหน้า index.html
 
   // อ่าน response เป็น JSON แบบไม่พัง ถ้า server ตอบเป็น HTML (เช่น 500 ของ Flask หรือ 502/504 ของ nginx) จะได้ null
-  async function readJson(response) {
+  async function readJson(response) {  // ← อ่านคำตอบเป็น JSON ถ้าไม่ใช่ JSON คืน null
     try { return await response.json(); } catch { return null; }
   }
 
   // ข้อความ error ตามสิ่งที่เกิดจริง: 5xx = server มีปัญหา (ต่อถึงแล้ว) ไม่ใช่ปัญหาเครือข่าย
-  function authErrorMessage(response, data, fallback) {
-    if (data && data.error) return data.error;
+  function authErrorMessage(response, data, fallback) {  // ← เลือกข้อความ error ที่จะแสดง
+    if (data && data.error) return data.error;  // ← ใช้ข้อความจาก Backend ก่อน เช่น ชื่อซ้ำ หรือบัญชีถูกระงับ
     if (response.status >= 500) return 'Backend เกิดข้อผิดพลาด (' + response.status + ') — ดู error ใน terminal ของ Backend';
     return fallback;
   }
 
-  function setAuthMsg(id, text, type) {
+  function setAuthMsg(id, text, type) {  // ← แสดงข้อความใต้ฟอร์ม
     const el = document.getElementById(id);
     if (el) {
       el.textContent = text;
@@ -236,74 +236,74 @@
     }
   }
 
-  function switchAuthTab(tab) {
+  function switchAuthTab(tab) {  // ← ทำงานเมื่อกดแท็บ เข้าสู่ระบบ / สมัครสมาชิก
     document.getElementById('auth-tab-login').classList.toggle('active', tab === 'login');
     document.getElementById('auth-tab-signup').classList.toggle('active', tab === 'signup');
-    document.getElementById('login-form').classList.toggle('active', tab === 'login');
+    document.getElementById('login-form').classList.toggle('active', tab === 'login');  // ← แสดงฟอร์มของแท็บที่เลือก
     document.getElementById('signup-form').classList.toggle('active', tab === 'signup');
     setAuthMsg('login-msg', '');
     setAuthMsg('signup-msg', '');
   }
 
-  async function handleSignup(e) {
-    e.preventDefault();
+  async function handleSignup(e) {  // ← ทำงานเมื่อกดปุ่ม 'สร้างบัญชี'
+    e.preventDefault();  // ← ไม่ให้ browser โหลดหน้าใหม่ตอนส่งฟอร์ม
     const name = document.getElementById('signup-name').value.trim();
     const password = document.getElementById('signup-password').value;
     const confirm = document.getElementById('signup-confirm').value;
 
-    if (password !== confirm) {
+    if (password !== confirm) {  // ← รหัสผ่านสองช่องไม่ตรงกัน -> ไม่ส่งไป Backend
       setAuthMsg('signup-msg', 'รหัสผ่านไม่ตรงกัน', 'error');
       return;
     }
 
     try {
-      const response = await fetch(BACKEND_URL + '/api/auth/register', {
+      const response = await fetch(BACKEND_URL + '/api/auth/register', {  // ← POST /api/auth/register ไปที่ Backend
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: name, password: password })
+        body: JSON.stringify({ username: name, password: password })  // ← ส่งชื่อและรหัสผ่านเป็น JSON
       });
 
       const data = await readJson(response);
 
-      if (response.ok) {
+      if (response.ok) {  // ← สมัครสำเร็จ (Backend ตอบ 201)
         setAuthMsg('signup-msg', 'สร้างบัญชีสำเร็จ กรุณาเข้าสู่ระบบ', 'success');
         setTimeout(() => {
-          switchAuthTab('login');
+          switchAuthTab('login');  // ← สลับไปแท็บเข้าสู่ระบบให้เอง
           document.getElementById('login-username').value = name;
           document.getElementById('login-password').value = '';
         }, 1000);
       } else {
         setAuthMsg('signup-msg', authErrorMessage(response, data, 'สมัครสมาชิกไม่สำเร็จ'), 'error');
       }
-    } catch (error) {
+    } catch (error) {  // ← ต่อ Backend ไม่ถึงจริงๆ เช่น IP ผิด หรือ Backend ปิด
       setAuthMsg('signup-msg', 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ Backend ได้', 'error');
     }
   }
 
-  async function handleLogin(e) {
-    e.preventDefault();
+  async function handleLogin(e) {  // ← ทำงานเมื่อกดปุ่ม 'เข้าสู่ระบบ'
+    e.preventDefault();  // ← ไม่ให้ browser โหลดหน้าใหม่ตอนส่งฟอร์ม
     const username = document.getElementById('login-username').value.trim();
     const password = document.getElementById('login-password').value;
 
     try {
-      const response = await fetch(BACKEND_URL + '/api/auth/login', {
+      const response = await fetch(BACKEND_URL + '/api/auth/login', {  // ← POST /api/auth/login ไปที่ Backend
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: username, password: password })
+        body: JSON.stringify({ username: username, password: password })  // ← ส่งชื่อและรหัสผ่านเป็น JSON
       });
 
       const data = await readJson(response);
 
-      if (response.ok && data && data.access_token) {
+      if (response.ok && data && data.access_token) {  // ← login สำเร็จ และได้ token กลับมา
         setAuthMsg('login-msg', 'เข้าสู่ระบบสำเร็จ', 'success');
-        localStorage.setItem(SESSION_KEY, JSON.stringify(data));
+        localStorage.setItem(SESSION_KEY, JSON.stringify(data));  // ← เก็บ {access_token, user} ไว้ใน browser
         setTimeout(() => {
-          window.location.href = 'index.html';
+          window.location.href = 'index.html';  // ← ไปหน้าหลัก
         }, 500);
       } else {
         setAuthMsg('login-msg', authErrorMessage(response, data, 'ชื่อผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง'), 'error');
       }
-    } catch (error) {
+    } catch (error) {  // ← ต่อ Backend ไม่ถึงจริงๆ
       setAuthMsg('login-msg', 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ Backend ได้', 'error');
     }
   }

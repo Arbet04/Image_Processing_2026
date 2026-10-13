@@ -302,16 +302,16 @@
       <span class="word">Image Genny</span>
     </div>
     <nav class="nav-links">
-      <button class="active" onclick="switchPage('generate',this)">สร้างภาพ</button>
-      <button onclick="switchPage('edit',this)">แก้ไขภาพ</button>
-      <button onclick="switchPage('library',this)">คลังภาพของฉัน</button>
-      <button id="nav-admin" class="hidden" onclick="switchPage('admin',this)">จัดการผู้ใช้</button>
+      <button class="active" onclick="switchPage('generate',this)">สร้างภาพ</button> <!-- ← กด -> switchPage() แสดงหน้าสร้างภาพ -->
+      <button onclick="switchPage('edit',this)">แก้ไขภาพ</button> <!-- ← กด -> switchPage() แสดงหน้าแก้ไขภาพ -->
+      <button onclick="switchPage('library',this)">คลังภาพของฉัน</button> <!-- ← กด -> switchPage() แสดงหน้าคลังภาพ -->
+      <button id="nav-admin" class="hidden" onclick="switchPage('admin',this)">จัดการผู้ใช้</button> <!-- ← เห็นเฉพาะ admin กด -> switchPage('admin') -> loadAdminUsers() -> GET /api/admin/users -->
     </nav>
     <div class="profile-menu-wrap">
-      <div class="profile" onclick="toggleProfile(event)">A</div>
+      <div class="profile" onclick="toggleProfile(event)">A</div> <!-- ← กด -> toggleProfile() เปิด/ปิดเมนูด้านล่าง -->
       <div class="profile-dropdown" id="profileMenu">
-        <button onclick="handleProfileAction('about')">ℹ️ เกี่ยวกับ</button>
-        <button onclick="handleProfileAction('logout')">ออกจากระบบ</button>
+        <button onclick="handleProfileAction('about')">ℹ️ เกี่ยวกับ</button> <!-- ← กด -> openAbout() เปิดหน้าต่างเกี่ยวกับ -->
+        <button onclick="handleProfileAction('logout')">ออกจากระบบ</button> <!-- ← กด -> ลบ token แล้วไปหน้า login.html -->
       </div>
     </div>
   </header>
@@ -324,7 +324,7 @@
       <div class="studio-display" id="studioDisplay">
         <div class="section-head">
           <div class="section-title">ภาพที่สร้าง</div>
-          <button class="clear-btn hidden" id="clearBtn" onclick="clearResults()">ล้างผลลัพธ์</button>
+          <button class="clear-btn hidden" id="clearBtn" onclick="clearResults()">ล้างผลลัพธ์</button> <!-- ← กด -> clearResults() ล้างรูปที่แสดงอยู่ -->
         </div>
         <div class="result-gallery hidden" id="resultGallery"></div>
         <div class="studio-empty" id="studioEmpty">
@@ -343,14 +343,14 @@
           </div>
           <div class="controls">
             <div class="chips" id="style-chips">
-              <button class="chip selected" data-style="realistic" onclick="selectChip(this)">สมจริง</button>
+              <button class="chip selected" data-style="realistic" onclick="selectChip(this)">สมจริง</button> <!-- ← ปุ่มสไตล์ทั้ง 4: กด -> selectChip() จำสไตล์ไว้ต่อท้าย prompt -->
               <button class="chip" data-style="cartoon" onclick="selectChip(this)">การ์ตูน</button>
               <button class="chip" data-style="painting" onclick="selectChip(this)">ภาพวาดสี</button>
               <button class="chip" data-style="anime" onclick="selectChip(this)">อนิเมะ</button>
             </div>
-            <button class="generate" id="gen-btn" onclick="generateImage()">✦ สร้างภาพ</button>
+            <button class="generate" id="gen-btn" onclick="generateImage()">✦ สร้างภาพ</button> <!-- ← กด -> generateImage() -> POST /api/image/generate -> Backend -> AI Service -> Forge Neo -->
           </div>
-          <button class="advanced-toggle" onclick="toggleAdvanced()">⚙ ตัวเลือกเพิ่มเติม</button>
+          <button class="advanced-toggle" onclick="toggleAdvanced()">⚙ ตัวเลือกเพิ่มเติม</button> <!-- ← กด -> toggleAdvanced() เปิด/ปิดตัวเลือกเพิ่มเติม -->
           <div class="advanced" id="advanced">
             <div class="setting">
               <label>ขนาดภาพ</label>
@@ -383,7 +383,7 @@
             <div class="setting span3">
               <label>การเชื่อมต่อ Backend</label>
               <div style="display:flex;gap:8px;align-items:center;">
-                <button class="clear-btn" type="button" onclick="testConnection()">ทดสอบการเชื่อมต่อ</button>
+                <button class="clear-btn" type="button" onclick="testConnection()">ทดสอบการเชื่อมต่อ</button> <!-- ← กด -> testConnection() -> GET /api/auth/me เช็คว่าต่อ Backend ได้ -->
                 <span class="url-badge offline" id="url-badge">ยังไม่เชื่อมต่อ</span>
               </div>
             </div>
@@ -403,7 +403,7 @@
         ondragover="event.preventDefault();this.classList.add('dragover')"
         ondragleave="this.classList.remove('dragover')"
         ondrop="handleEditDrop(event)">
-        <input type="file" id="edit-file" accept="image/*" onchange="handleEditFile(this.files[0])">
+        <input type="file" id="edit-file" accept="image/*" onchange="handleEditFile(this.files[0])"> <!-- ← เลือกไฟล์ -> handleEditFile() -> loadEditImage() (ทำใน browser ไม่ส่งไป Backend) -->
         <div class="upload-icon">🖼️</div>
         <div><strong>คลิกเพื่ออัปโหลดภาพ</strong> หรือลากมาวาง</div>
         <div style="font-size:11px;">รองรับ PNG, JPG, WEBP</div>
@@ -411,15 +411,15 @@
 
       <div id="edit-workspace" style="display:none; flex-direction:column; align-items:center; gap:14px; width:100%; max-width:480px;">
         <div class="edit-toolbar">
-          <button class="tool-btn" id="tool-reset" onclick="resetEdit()"><span class="ic">⟲</span>รีเซ็ต</button>
-          <button class="tool-btn active" id="tool-erase" onclick="setEditTool('erase')"><span class="ic">🧽</span>ลบ</button>
-          <button class="tool-btn" id="tool-crop" onclick="setEditTool('crop')"><span class="ic">✂️</span>ครอป</button>
-          <button class="tool-btn" id="tool-adjust" onclick="setEditTool('adjust')"><span class="ic">🎨</span>ปรับสี</button>
-          <button class="tool-btn" id="tool-rotate" onclick="setEditTool('rotate')"><span class="ic">🔄</span>หมุน</button>
+          <button class="tool-btn" id="tool-reset" onclick="resetEdit()"><span class="ic">⟲</span>รีเซ็ต</button> <!-- ← กด -> resetEdit() กลับเป็นภาพต้นฉบับ -->
+          <button class="tool-btn active" id="tool-erase" onclick="setEditTool('erase')"><span class="ic">🧽</span>ลบ</button> <!-- ← กด -> setEditTool('erase') ใช้แปรงลบ -->
+          <button class="tool-btn" id="tool-crop" onclick="setEditTool('crop')"><span class="ic">✂️</span>ครอป</button> <!-- ← กด -> setEditTool('crop') ลากเลือกพื้นที่ครอป -->
+          <button class="tool-btn" id="tool-adjust" onclick="setEditTool('adjust')"><span class="ic">🎨</span>ปรับสี</button> <!-- ← กด -> setEditTool('adjust') แสดงแถบปรับสี -->
+          <button class="tool-btn" id="tool-rotate" onclick="setEditTool('rotate')"><span class="ic">🔄</span>หมุน</button> <!-- ← กด -> setEditTool('rotate') แสดงปุ่มหมุน/พลิก -->
         </div>
 
         <div class="erase-mode-row" id="rotate-row">
-          <button class="mode-btn" onclick="transformEdit('rotate-left')">↺ หมุนซ้าย</button>
+          <button class="mode-btn" onclick="transformEdit('rotate-left')">↺ หมุนซ้าย</button> <!-- ← ปุ่มหมุน/พลิกทั้ง 4: กด -> transformEdit() ใช้ทันที -->
           <button class="mode-btn" onclick="transformEdit('rotate-right')">↻ หมุนขวา</button>
           <button class="mode-btn" onclick="transformEdit('flip-h')">⇋ พลิกซ้าย-ขวา</button>
           <button class="mode-btn" onclick="transformEdit('flip-v')">⇅ พลิกบน-ล่าง</button>
@@ -474,15 +474,15 @@
         <div class="edit-hint" id="edit-hint">แปรงทับส่วนของภาพที่ต้องการลบออก — จะถูกลบให้โปร่งใส</div>
 
         <div class="edit-actions">
-          <button onclick="undoEdit()" id="undo-btn" disabled>↶ ย้อนกลับ</button>
-          <button onclick="applyCrop()" id="crop-apply-btn" style="display:none;">✓ ยืนยันครอป</button>
+          <button onclick="undoEdit()" id="undo-btn" disabled>↶ ย้อนกลับ</button> <!-- ← กด -> undoEdit() ย้อนกลับ 1 ขั้น -->
+          <button onclick="applyCrop()" id="crop-apply-btn" style="display:none;">✓ ยืนยันครอป</button> <!-- ← กด -> applyCrop() ตัดภาพตามกรอบที่ลาก -->
           <button onclick="resetAdjustControls()" id="adjust-clear-btn" style="display:none;">✕ ล้างค่า</button>
-          <button class="primary" onclick="applyAdjust()" id="adjust-apply-btn" style="display:none;">✓ ใช้การปรับสี</button>
-          <button class="primary" onclick="applySmartErase()" id="smart-apply-btn" style="display:none;">✓ ลบส่วนที่เลือก</button>
+          <button class="primary" onclick="applyAdjust()" id="adjust-apply-btn" style="display:none;">✓ ใช้การปรับสี</button> <!-- ← กด -> applyAdjust() ใช้การปรับสีกับภาพจริง -->
+          <button class="primary" onclick="applySmartErase()" id="smart-apply-btn" style="display:none;">✓ ลบส่วนที่เลือก</button> <!-- ← กด -> applySmartErase() ลบส่วนที่ AI เลือกไว้ -->
           <button onclick="cancelSmartSelection()" id="smart-cancel-btn" style="display:none;">✕ ยกเลิก</button>
-          <button class="primary" onclick="downloadEdit()">⬇ ดาวน์โหลด PNG</button>
+          <button class="primary" onclick="downloadEdit()">⬇ ดาวน์โหลด PNG</button> <!-- ← กด -> downloadEdit() ดาวน์โหลดภาพที่แก้เป็น PNG -->
         </div>
-        <button class="tool-btn" style="flex:none; width:100%;" onclick="changeEditImage()">🔄 เปลี่ยนภาพ</button>
+        <button class="tool-btn" style="flex:none; width:100%;" onclick="changeEditImage()">🔄 เปลี่ยนภาพ</button> <!-- ← กด -> changeEditImage() เลือกไฟล์ภาพใหม่ -->
       </div>
     </div>
   </section>
@@ -500,7 +500,7 @@
     <div class="explore-title">จัดการผู้ใช้</div>
     <p class="explore-sub">ระงับหรือปลดระงับบัญชีผู้ใช้ — บัญชีที่ถูกระงับจะเข้าสู่ระบบและสร้างภาพไม่ได้ แต่บัญชีและรูปยังอยู่ครบ ปลดระงับได้ทุกเมื่อ</p>
     <div class="admin-bar">
-      <button class="clear-btn" type="button" onclick="loadAdminUsers()">↻ โหลดใหม่</button>
+      <button class="clear-btn" type="button" onclick="loadAdminUsers()">↻ โหลดใหม่</button> <!-- ← กด -> loadAdminUsers() -> GET /api/admin/users -->
       <span class="admin-status" id="admin-status"></span>
     </div>
     <div class="admin-table-wrap">
@@ -527,8 +527,8 @@
   <div class="modal-box">
     <img id="modalImage" class="modal-image" src="">
     <div class="modal-footer">
-      <button class="generate" id="modalSaveBtn" onclick="saveCurrent()">♡ บันทึก</button>
-      <button class="generate" onclick="downloadCurrent()">↓ ดาวน์โหลด</button>
+      <button class="generate" id="modalSaveBtn" onclick="saveCurrent()">♡ บันทึก</button> <!-- ← กด -> saveCurrent() บันทึกหรือเอาออกจากคลัง -->
+      <button class="generate" onclick="downloadCurrent()">↓ ดาวน์โหลด</button> <!-- ← กด -> downloadCurrent() ดาวน์โหลดรูปนี้ -->
       <button class="close" onclick="closeModal()">✕</button>
     </div>
   </div>
@@ -603,7 +603,7 @@
      BACKEND_URL และ SESSION_KEY มาจาก config.js
      session = {access_token, user} ที่ login.html เก็บลง localStorage ตอน login สำเร็จ */
 
-  function getSession() {
+  function getSession() {  // ← อ่านข้อมูล login ที่ login.html เก็บไว้ใน browser
     try {
       return JSON.parse(localStorage.getItem(SESSION_KEY));
     } catch {
@@ -614,72 +614,72 @@
   // เช็ค session ทันทีที่เปิดหน้า ถ้าไม่ได้ login ไว้ ให้เด้งกลับไปหน้า login ก่อน
   // โหมดพรีวิว: เปิดอัตโนมัติเฉพาะตอนไม่มี config.js (ดูหน้าเว็บอย่างเดียว)
   // ถ้ามี config.js อยู่ข้างไฟล์ จะทำงานปกติเหมือนโค้ดเดิม เชื่อม Backend ได้เลย
-  const PREVIEW_MODE = (typeof SESSION_KEY === 'undefined' || typeof BACKEND_URL === 'undefined');
+  const PREVIEW_MODE = (typeof SESSION_KEY === 'undefined' || typeof BACKEND_URL === 'undefined');  // ← ไม่มี config.js = โหมดดูหน้าเว็บอย่างเดียว ไม่ต่อ Backend
 
-  const session = getSession();
-  if (!PREVIEW_MODE && (!session || !session.access_token)) {
-    window.location.href = 'login.html';
+  const session = getSession();  // ← ได้ {access_token, user} หรือ null ถ้ายังไม่ได้ login
+  if (!PREVIEW_MODE && (!session || !session.access_token)) {  // ← ยังไม่ได้ login
+    window.location.href = 'login.html';  // ← พาไปหน้า login ทันที
   }
 
   // แสดงข้อมูลผู้ใช้บนหน้า: ตัวอักษรแรกของชื่อบนปุ่มโปรไฟล์ (ชี้เมาส์เพื่อดูชื่อเต็ม)
   // และเมนู "จัดการผู้ใช้" ซึ่งแสดงเฉพาะ role = 'admin'
   // (การซ่อนเมนูเป็นแค่ความสะดวก — สิทธิ์จริงตรวจที่ Backend ทุกครั้ง)
-  function applyUserUI(user) {
+  function applyUserUI(user) {  // ← แสดงตัวอักษรชื่อบนปุ่มโปรไฟล์ และเมนู admin
     if (!user || !user.username) return;
     const profileEl = document.querySelector('.profile');
     profileEl.textContent = user.username.charAt(0).toUpperCase();
     profileEl.title = user.username + (user.role === 'admin' ? ' (ผู้ดูแลระบบ)' : '');
-    document.getElementById('nav-admin').classList.toggle('hidden', user.role !== 'admin');
+    document.getElementById('nav-admin').classList.toggle('hidden', user.role !== 'admin');  // ← แสดงเมนู 'จัดการผู้ใช้' เฉพาะ role = admin
   }
   if (session) applyUserUI(session.user);
 
-  function forceLogout() {
-    localStorage.removeItem(SESSION_KEY);
-    window.location.href = 'login.html';
+  function forceLogout() {  // ← ลบข้อมูล login แล้วกลับหน้า login
+    localStorage.removeItem(SESSION_KEY);  // ← ลบ token ออกจาก browser
+    window.location.href = 'login.html';  // ← ไปหน้า login
   }
 
   // ถาม Backend ว่าบัญชียังใช้ได้และ role ล่าสุดคืออะไร (role/สถานะอาจเปลี่ยนหลัง login)
   // 401 = token หมดอายุ หรือบัญชีถูกระงับ -> กลับไปหน้า login
   // ถ้าต่อ Backend ไม่ได้ จะใช้ข้อมูลจาก session เดิมไปก่อน
-  async function refreshSession() {
+  async function refreshSession() {  // ← ถาม Backend ว่าบัญชียังใช้ได้ไหม และ role ล่าสุดคืออะไร
     const s = getSession();
     if (PREVIEW_MODE || !s || !s.access_token) return;
     try {
-      const res = await fetch(BACKEND_URL + '/api/auth/me', {
-        headers: { 'Authorization': 'Bearer ' + s.access_token }
+      const res = await fetch(BACKEND_URL + '/api/auth/me', {  // ← GET /api/auth/me ไปที่ Backend
+        headers: { 'Authorization': 'Bearer ' + s.access_token }  // ← แนบ token ให้ Backend รู้ว่าเป็นใคร
       });
-      if (res.status === 401) { forceLogout(); return; }
+      if (res.status === 401) { forceLogout(); return; }  // ← token หมดอายุ หรือบัญชีถูกระงับ -> กลับหน้า login
       if (!res.ok) return;
-      s.user = await res.json();
-      localStorage.setItem(SESSION_KEY, JSON.stringify(s));
-      applyUserUI(s.user);
+      s.user = await res.json();  // ← ข้อมูลผู้ใช้ล่าสุดจาก Backend
+      localStorage.setItem(SESSION_KEY, JSON.stringify(s));  // ← เก็บทับของเดิม
+      applyUserUI(s.user);  // ← อัปเดตปุ่มโปรไฟล์และเมนู admin
     } catch { /* ต่อ Backend ไม่ได้ — ไม่ต้องทำอะไร */ }
   }
-  refreshSession();
+  refreshSession();  // ← เรียกทันทีทุกครั้งที่เปิดหน้า
 
   /* ═══════════ NAV / PROFILE ═══════════ */
-  function switchPage(id, btn) {
+  function switchPage(id, btn) {  // ← ทำงานเมื่อกดเมนูด้านบน
     document.querySelectorAll('.nav-links button').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
+    btn.classList.add('active');  // ← ขีดเส้นใต้เมนูที่เลือก
     document.querySelectorAll('.page-view').forEach(v => v.classList.remove('active'));
-    document.getElementById(id).classList.add('active');
-    if (id === 'admin') loadAdminUsers();
+    document.getElementById(id).classList.add('active');  // ← แสดงหน้าที่เลือก (ทุกหน้าอยู่ในไฟล์เดียว แค่ซ่อน/แสดง)
+    if (id === 'admin') loadAdminUsers();  // ← เข้าหน้าจัดการผู้ใช้ -> โหลดรายชื่อจาก Backend
   }
 
-  function toggleProfile(e) {
+  function toggleProfile(e) {  // ← ทำงานเมื่อกดปุ่มโปรไฟล์วงกลม
     e.stopPropagation();
-    document.getElementById('profileMenu').classList.toggle('open');
+    document.getElementById('profileMenu').classList.toggle('open');  // ← เปิด/ปิดเมนูย่อย
   }
   document.addEventListener('click', () => document.getElementById('profileMenu').classList.remove('open'));
 
-  function handleProfileAction(action) {
+  function handleProfileAction(action) {  // ← ทำงานเมื่อกดรายการในเมนูโปรไฟล์
     if (action === 'about') {
-      openAbout();
+      openAbout();  // ← เปิดหน้าต่าง 'เกี่ยวกับ'
     } else if (action === 'logout') {
       if (PREVIEW_MODE) { alert('โหมดพรีวิว: ไม่มีระบบ login'); return; }
-      if (confirm('ออกจากระบบ Image Genny?')) {
-        localStorage.removeItem(SESSION_KEY);
-        window.location.href = 'login.html';
+      if (confirm('ออกจากระบบ Image Genny?')) {  // ← ถามยืนยันก่อน
+        localStorage.removeItem(SESSION_KEY);  // ← ลบ token = ออกจากระบบ
+        window.location.href = 'login.html';  // ← กลับหน้า login
       }
     }
   }
@@ -702,14 +702,14 @@
   }
 
   // เรียก API ของ admin พร้อมแนบ token — คืน {res, data} หรือ null ถ้าถูกพาออกจากระบบแล้ว
-  async function adminFetch(path, method = 'GET') {
+  async function adminFetch(path, method = 'GET') {  // ← ตัวช่วยเรียก API ของ admin พร้อมแนบ token
     const s = getSession();
     if (!s || !s.access_token) { forceLogout(); return null; }
-    const res = await fetch(BACKEND_URL + path, {
+    const res = await fetch(BACKEND_URL + path, {  // ← ส่งคำขอไปที่ Backend
       method,
       headers: { 'Authorization': 'Bearer ' + s.access_token }
     });
-    if (res.status === 401) { forceLogout(); return null; }
+    if (res.status === 401) { forceLogout(); return null; }  // ← ถูกระงับหรือ token หมดอายุ -> กลับหน้า login
     let data = null;
     try { data = await res.json(); } catch {}
     return { res, data };
@@ -722,13 +722,13 @@
     return isNaN(d) ? '—' : d.toLocaleString('th-TH', { dateStyle: 'medium', timeStyle: 'short' });
   }
 
-  async function loadAdminUsers() {
+  async function loadAdminUsers() {  // ← โหลดรายชื่อผู้ใช้มาแสดงในตาราง
     if (PREVIEW_MODE) { setAdminStatus('โหมดพรีวิว: ยังไม่ได้เชื่อมต่อ Backend', 'error'); return; }
     setAdminStatus('กำลังโหลด...');
     try {
-      const r = await adminFetch('/api/admin/users');
+      const r = await adminFetch('/api/admin/users');  // ← GET /api/admin/users
       if (!r) return;
-      if (r.res.status === 403) {
+      if (r.res.status === 403) {  // ← Backend บอกว่าไม่ใช่ admin
         // ไม่ใช่ admin แล้ว (เช่นถูกถอนสิทธิ์) — ซ่อนเมนูและเคลียร์ตาราง
         document.getElementById('nav-admin').classList.add('hidden');
         document.getElementById('admin-users-body').replaceChildren();
@@ -739,7 +739,7 @@
         setAdminStatus('โหลดรายชื่อไม่สำเร็จ (' + r.res.status + ')' + (r.data && r.data.error ? ': ' + r.data.error : ''), 'error');
         return;
       }
-      renderAdminUsers(r.data);
+      renderAdminUsers(r.data);  // ← วาดตารางจากข้อมูลที่ได้
       const suspended = r.data.filter(u => u.status !== 'active').length;
       setAdminStatus('ผู้ใช้ทั้งหมด ' + r.data.length + ' บัญชี' + (suspended ? ' · ถูกระงับ ' + suspended : ''));
     } catch {
@@ -748,7 +748,7 @@
   }
 
   // สร้างแถวด้วย DOM + textContent เท่านั้น (ชื่อผู้ใช้มาจากคนสมัคร ห้ามใส่ลง innerHTML)
-  function renderAdminUsers(users) {
+  function renderAdminUsers(users) {  // ← สร้างแถวของตาราง 1 แถวต่อ 1 ผู้ใช้
     const me = (getSession() || {}).user || {};
     const cell = (text, cls) => { const td = document.createElement('td'); if (cls) td.className = cls; td.textContent = text; return td; };
     const pill = (text, cls) => { const td = document.createElement('td'); const sp = document.createElement('span'); sp.className = 'admin-pill ' + cls; sp.textContent = text; td.appendChild(sp); return td; };
@@ -775,7 +775,7 @@
         btn.type = 'button';
         btn.className = 'admin-action' + (active ? ' danger' : '');
         btn.textContent = active ? 'ระงับ' : 'ปลดระงับ';
-        btn.onclick = () => setUserSuspended(u, active, btn);
+        btn.onclick = () => setUserSuspended(u, active, btn);  // ← กดปุ่มระงับ/ปลดระงับในตาราง -> setUserSuspended()
         actionTd.appendChild(btn);
       }
       tr.appendChild(actionTd);
@@ -784,21 +784,21 @@
     document.getElementById('admin-users-body').replaceChildren(...rows);
   }
 
-  async function setUserSuspended(user, suspend, btn) {
+  async function setUserSuspended(user, suspend, btn) {  // ← ทำงานเมื่อกดปุ่มระงับหรือปลดระงับ
     const question = suspend
       ? 'ระงับบัญชี "' + user.username + '"?\nผู้ใช้นี้จะเข้าสู่ระบบและสร้างภาพไม่ได้ทันที (บัญชีและรูป ' + user.image_count + ' รูปยังอยู่ ปลดระงับได้ภายหลัง)'
       : 'ปลดระงับบัญชี "' + user.username + '"?';
-    if (!confirm(question)) return;
+    if (!confirm(question)) return;  // ← ถามยืนยัน ถ้ากดยกเลิกไม่ทำอะไร
     btn.disabled = true;
     try {
-      const r = await adminFetch('/api/admin/users/' + user.id + (suspend ? '/suspend' : '/unsuspend'), 'POST');
+      const r = await adminFetch('/api/admin/users/' + user.id + (suspend ? '/suspend' : '/unsuspend'), 'POST');  // ← POST /api/admin/users/<id>/suspend หรือ /unsuspend
       if (!r) return;
       if (!r.res.ok) {
         setAdminStatus((suspend ? 'ระงับ' : 'ปลดระงับ') + 'ไม่สำเร็จ: ' + ((r.data && r.data.error) || r.res.status), 'error');
         btn.disabled = false;
         return;
       }
-      await loadAdminUsers();
+      await loadAdminUsers();  // ← โหลดตารางใหม่ให้เห็นสถานะล่าสุด
       setAdminStatus((suspend ? 'ระงับบัญชี "' : 'ปลดระงับบัญชี "') + user.username + '" แล้ว', 'success');
     } catch {
       setAdminStatus('ต่อ Backend ไม่ได้', 'error');
@@ -820,16 +820,16 @@
     anime: ', anime style, cel shaded, vibrant colors'
   };
 
-  function selectChip(el) {
+  function selectChip(el) {  // ← ทำงานเมื่อกดปุ่มสไตล์
     document.querySelectorAll('.chip').forEach(c => c.classList.remove('selected'));
     el.classList.add('selected');
-    selectedStyle = el.dataset.style;
+    selectedStyle = el.dataset.style;  // ← จำสไตล์ไว้ต่อท้าย prompt ตอนกดสร้างภาพ (ไม่ได้เปลี่ยน model)
   }
 
   function toggleAdvanced() { document.getElementById('advanced').classList.toggle('open'); }
 
   /* ═══════════ GENERATION ═══════════ */
-  async function testConnection() {
+  async function testConnection() {  // ← ทำงานเมื่อกดปุ่ม 'ทดสอบการเชื่อมต่อ'
     // เช็คว่า Backend (Flask) ตอบกลับไหม โดยยิงไปที่ /api/auth/me แบบมี token
     // (ใช้ /me เพราะเบา ไม่ช้าลงตามจำนวนประวัติเหมือน /history)
     // หน้าเว็บคุยกับ Backend เท่านั้น — ปุ่มนี้จึงไม่ได้บอกว่า AI Service / Forge Neo พร้อมหรือไม่
@@ -838,11 +838,11 @@
     badge.className = 'url-badge offline';
     const s = getSession();
     try {
-      const res = await fetch(BACKEND_URL + '/api/auth/me', {
+      const res = await fetch(BACKEND_URL + '/api/auth/me', {  // ← GET /api/auth/me เช็คว่า Backend ตอบไหม
         headers: { 'Authorization': 'Bearer ' + (s ? s.access_token : '') },
         signal: AbortSignal.timeout(4000)
       });
-      if (res.ok || res.status === 401) {
+      if (res.ok || res.status === 401) {  // ← Backend ตอบกลับมา = เชื่อมต่อได้
         // 401 แปลว่า Backend ตอบสนอง แค่ token หมดอายุ/ไม่ถูกต้อง ก็ถือว่าเชื่อมต่อ server ได้
         badge.textContent = res.ok ? '✅ เชื่อมต่อแล้ว' : '⚠️ เชื่อมต่อได้ แต่ session หมดอายุ';
         badge.className = res.ok ? 'url-badge online' : 'url-badge offline';
@@ -865,80 +865,80 @@
   let current = { source: '', index: 0 };
   let isGenerating = false;
 
-  async function generateImage() {
-    if (isGenerating) return;
+  async function generateImage() {  // ← ทำงานเมื่อกดปุ่ม 'สร้างภาพ'
+    if (isGenerating) return;  // ← กันการกดซ้ำระหว่างที่ยังรอรูปอยู่
 
     // ต้อง login ก่อนถึงจะเจนรูปได้ — เช็ค token ซ้ำอีกรอบเผื่อ session หมดอายุระหว่างใช้งาน
     if (PREVIEW_MODE) { setStatus('ℹ️ โหมดพรีวิว: ยังไม่ได้เชื่อมต่อ Backend จึงสร้างภาพจริงไม่ได้', 'error'); return; }
-    const s = getSession();
-    if (!s || !s.access_token) { window.location.href = 'login.html'; return; }
+    const s = getSession();  // ← อ่าน token
+    if (!s || !s.access_token) { window.location.href = 'login.html'; return; }  // ← ไม่มี token -> ไปหน้า login
 
-    let pos = document.getElementById('prompt-pos').value.trim();
-    const neg = document.getElementById('prompt-neg').value.trim();
+    let pos = document.getElementById('prompt-pos').value.trim();  // ← ข้อความที่ผู้ใช้พิมพ์
+    const neg = document.getElementById('prompt-neg').value.trim();  // ← negative prompt
 
     if (!pos) { setStatus('⚠️ กรุณาใส่คำอธิบายภาพก่อนสร้างภาพ', 'error'); document.getElementById('prompt-pos').focus(); return; }
     const promptForCard = pos;
-    if (selectedStyle) pos += styleSuffixes[selectedStyle];
+    if (selectedStyle) pos += styleSuffixes[selectedStyle];  // ← ต่อท้ายด้วยข้อความของสไตล์ที่เลือก
 
-    const [w, h] = document.getElementById('size-select').value.split(',').map(Number);
+    const [w, h] = document.getElementById('size-select').value.split(',').map(Number);  // ← ขนาดภาพที่เลือก
     const seedVal = document.getElementById('seed-input').value.trim();
     if (seedVal && !/^-?\d+$/.test(seedVal)) { setStatus('⚠️ Seed ต้องเป็นตัวเลขจำนวนเต็ม (หรือเว้นว่างเพื่อสุ่ม)', 'error'); return; }
-    const seed = seedVal ? parseInt(seedVal) : -1;
-    const steps = parseInt(document.getElementById('steps-input').value);
+    const seed = seedVal ? parseInt(seedVal) : -1;  // ← ไม่ได้กรอก = -1 (สุ่ม)
+    const steps = parseInt(document.getElementById('steps-input').value);  // ← จำนวน steps ที่กรอก
     if (!(steps >= 1 && steps <= 150)) { setStatus('⚠️ Steps ต้องอยู่ระหว่าง 1–150', 'error'); return; }
     // หมายเหตุ: batch_size ยังไม่รองรับฝั่ง Backend/AI Service ตอนนี้ (เจนได้ทีละ 1 รูปต่อ request)
 
-    isGenerating = true;
+    isGenerating = true;  // ← เริ่มสถานะกำลังสร้าง
     const btn = document.getElementById('gen-btn');
-    btn.disabled = true;
+    btn.disabled = true;  // ← ปิดปุ่มไว้ระหว่างรอ
     btn.textContent = 'กำลังสร้าง...';
     setStatus('กำลังสร้างภาพ กรุณารอสักครู่...');
 
     try {
       // ยิงไปที่ Backend (/api/image/generate) — Backend ตรวจ token, บันทึกประวัติลง DB
       // แล้วส่งต่อให้ AI Service -> Forge Neo  request นี้ค้างรอจนรูปเสร็จ (อาจนานหลายนาทีถ้ามีคิว)
-      const payload = { prompt: pos, negative_prompt: neg, steps, width: w, height: h, seed };
-      const res = await fetch(BACKEND_URL + '/api/image/generate', {
+      const payload = { prompt: pos, negative_prompt: neg, steps, width: w, height: h, seed };  // ← ข้อมูลที่ส่งให้ Backend
+      const res = await fetch(BACKEND_URL + '/api/image/generate', {  // ← POST ไป Backend แล้วรอจนรูปเสร็จ (Backend -> AI Service -> Forge Neo)
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer ' + s.access_token
+          'Authorization': 'Bearer ' + s.access_token  // ← แนบ token ให้ Backend รู้ว่าเป็นใคร
         },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payload)  // ← แปลงข้อมูลเป็น JSON
       });
 
-      if (res.status === 401) {
+      if (res.status === 401) {  // ← token ใช้ไม่ได้แล้ว หรือบัญชีถูกระงับ
         // token หมดอายุ/ไม่ถูกต้อง — ให้ login ใหม่
         localStorage.removeItem(SESSION_KEY);
-        window.location.href = 'login.html';
+        window.location.href = 'login.html';  // ← กลับหน้า login
         return;
       }
-      if (!res.ok) {
+      if (!res.ok) {  // ← Backend ตอบ error เช่น 502
         // แสดงสาเหตุจริงจาก Backend/AI Service (เช่น Forge Neo ไม่ได้เปิด, คิวเต็ม) แทนแค่ status code
         let reason = '';
-        try { const err = await res.json(); reason = err.details || err.error || ''; } catch {}
-        throw new Error('Backend แจ้งข้อผิดพลาด (' + res.status + ')' + (reason ? ': ' + reason : ''));
+        try { const err = await res.json(); reason = err.details || err.error || ''; } catch {}  // ← อ่านสาเหตุ (details มาจาก AI Service เช่น คิวเต็ม)
+        throw new Error('Backend แจ้งข้อผิดพลาด (' + res.status + ')' + (reason ? ': ' + reason : ''));  // ← โยนไปที่ catch ด้านล่างเพื่อแสดงข้อความ
       }
 
-      const data = await res.json();
+      const data = await res.json();  // ← ได้ { id, status, image_url, ... } จาก Backend
       // data มาจาก ImageTask.to_dict() ของ Backend: { id, status, image_url, ... }
       // image_url เป็น base64 string ของรูป (ไม่ใช่ URL จริง) จึงต้องต่อ prefix data:image/png;base64,
       if (!data.image_url) throw new Error('Backend ไม่ได้ส่งรูปกลับมา (status: ' + data.status + ')');
-      generated = [{ src: 'data:image/png;base64,' + data.image_url, prompt: promptForCard }];
-      renderGenerated();
-      setStatus('✅ สร้างภาพสำเร็จ', 'success');
+      generated = [{ src: 'data:image/png;base64,' + data.image_url, prompt: promptForCard }];  // ← เติม prefix ให้ base64 กลายเป็นรูปที่ browser แสดงได้
+      renderGenerated();  // ← แสดงรูปในช่องด้านซ้าย
+      setStatus('✅ สร้างภาพสำเร็จ', 'success');  // ← แจ้งผู้ใช้ว่าสำเร็จ
       document.getElementById('studioDisplay').scrollIntoView({ behavior: 'smooth', block: 'start' });
 
-    } catch (err) {
+    } catch (err) {  // ← มีปัญหา: ต่อ Backend ไม่ได้ หรือ Backend ตอบ error
       setStatus('❌ ' + err.message + ' — ตรวจสอบว่า Backend กำลังรันอยู่ และเชื่อมต่อเครือข่ายได้ (กดปุ่ม "ทดสอบการเชื่อมต่อ" ด้านบน)', 'error');
     }
 
-    isGenerating = false;
-    btn.disabled = false;
+    isGenerating = false;  // ← จบสถานะกำลังสร้าง
+    btn.disabled = false;  // ← เปิดปุ่มให้กดได้อีกครั้ง
     btn.textContent = '✦ สร้างภาพ';
   }
 
-  function clearResults() { generated = []; renderGenerated(); }
+  function clearResults() { generated = []; renderGenerated(); }  // ← ทำงานเมื่อกด 'ล้างผลลัพธ์'
 
   function isSaved(x) { return !!x && library.some(y => y.src === x.src); }
 
@@ -984,19 +984,19 @@
   }
 
   // กดหัวใจ: ถ้ายังไม่อยู่ในคลังให้บันทึก ถ้าอยู่แล้วให้เอาออก
-  function toggleSave(source, index) {
+  function toggleSave(source, index) {  // ← ทำงานเมื่อกดหัวใจที่รูป
     const x = getArt(source, index);
     if (!x) return;
     if (isSaved(x)) {
-      library = library.filter(y => y.src !== x.src);
+      library = library.filter(y => y.src !== x.src);  // ← อยู่ในคลังแล้ว -> เอาออก
     } else {
       historyCounter++;
-      library.unshift({ ...x, id: historyCounter });
+      library.unshift({ ...x, id: historyCounter });  // ← ยังไม่อยู่ -> เพิ่มเข้าคลัง (เก็บในหน่วยความจำ รีเฟรชแล้วหาย)
     }
-    renderLibrary();
+    renderLibrary();  // ← วาดหน้าคลังภาพใหม่
     renderGenerated(); // ให้หัวใจในหน้าเจนรูปตรงกับสถานะในคลัง
   }
-  function saveCurrent() {
+  function saveCurrent() {  // ← ทำงานเมื่อกด 'บันทึก' ในหน้าต่างรูปขยาย
     // index ของรูปในคลังจะเลื่อนหลังเอาออก จึงปิด modal ทุกครั้ง
     toggleSave(current.source, current.index);
     closeModal();
@@ -1005,17 +1005,17 @@
     document.getElementById('modalSaveBtn').textContent = isSaved(x) ? '♥ เอาออกจากคลัง' : '♡ บันทึก';
   }
 
-  function downloadArt(source, index) {
+  function downloadArt(source, index) {  // ← ทำงานเมื่อกดปุ่มดาวน์โหลดที่รูป
     const x = getArt(source, index);
     if (!x) return;
     const a = document.createElement('a');
     a.href = x.src;
     a.download = 'image-genny_' + Date.now() + '.png';
-    a.click();
+    a.click();  // ← สั่ง browser ดาวน์โหลดไฟล์ PNG
   }
   function downloadCurrent() { downloadArt(current.source, current.index); }
 
-  function openModal(source, index) {
+  function openModal(source, index) {  // ← ทำงานเมื่อกดที่รูป -> เปิดหน้าต่างรูปขยาย
     current = { source, index };
     const x = getArt(source, index);
     if (!x) return;
