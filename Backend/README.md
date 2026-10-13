@@ -37,8 +37,16 @@ python app.py
 
 ### Auth API (`/api/auth`)
 - `POST /api/auth/register` - สมัครสมาชิก (`username`, `password`)
-- `POST /api/auth/login` - เข้าสู่ระบบ (`username`, `password`) -> ได้รับ `access_token`
+- `POST /api/auth/login` - เข้าสู่ระบบ (`username`, `password`) -> ได้รับ `access_token` (บัญชีที่ถูกระงับได้ 403)
 - `GET /api/auth/me` - ดูข้อมูลผู้ใช้ปัจจุบัน (ต้องส่ง Bearer Token)
+
+### Admin API (`/api/admin`) — ต้อง login ด้วยบัญชีที่ `role = 'admin'`
+- `GET /api/admin/users` - รายชื่อผู้ใช้ทั้งหมด พร้อมจำนวนรูป (`image_count`)
+- `POST /api/admin/users/<id>/suspend` - ระงับบัญชี (login ไม่ได้ และ token เดิมใช้ไม่ได้ทันที) ไม่ลบบัญชีและรูป
+- `POST /api/admin/users/<id>/unsuspend` - ปลดระงับ
+- ระงับตัวเองหรือระงับ admin คนอื่นไม่ได้ / คนที่ไม่ใช่ admin เรียกจะได้ 403
+
+ตั้ง admin: ใส่ `ADMIN_USERNAME=<ชื่อผู้ใช้>` ใน `.env` (ตรงตัวพิมพ์เล็ก/ใหญ่) แล้ว restart — ถ้าบัญชีมีอยู่แล้วจะได้สิทธิ์ตอนเปิด server ถ้ายังไม่มีจะได้สิทธิ์ตอนสมัคร
 
 ### Image API (`/api/image`)
 - `POST /api/image/generate` - สั่งสร้างรูปภาพ (`prompt`, `negative_prompt`, `steps`, `width`, `height`, `seed`) ส่งต่อไปที่ AI Service แล้วรอจนรูปเสร็จ ตอบกลับ `image_url` เป็น base64

@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify, current_app
-from app.extensions import db
+from app.extensions import db, utcnow
 from app.models.user import User
-from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
+from flask_jwt_extended import create_access_token, jwt_required, current_user
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -19,6 +19,9 @@ def register():
 
     user = User(username=username)
     user.set_password(password)
+    # บัญชีที่ชื่อตรงกับ ADMIN_USERNAME ใน .env ได้สิทธิ์ผู้ดูแลระบบ
+    if username == current_app.config['ADMIN_USERNAME']:
+        user.role = 'admin'
     db.session.add(user)
     db.session.commit()
 
@@ -38,6 +41,14 @@ def login():
     if not user or not user.check_password(password):
         return jsonify({'error': 'Invalid username or password'}), 401
 
+    if user.status != 'active':
+        # ตรวจหลังรหัสผ่านถูกแล้วเท่านั้น คนที่ไม่รู้รหัสผ่านจึงไม่รู้ว่าบัญชีไหนถูกระงับ
+        current_app.logger.info(f"Blocked login for suspended user: {username}")
+        return jsonify({'error': 'บัญชีนี้ถูกระงับ กรุณาติดต่อผู้ดูแลระบบ'}), 403
+
+    user.last_login = utcnow()
+    db.session.commit()
+
     access_token = create_access_token(identity=str(user.id))
     current_app.logger.info(f"User logged in: {username}")
     return jsonify({
@@ -48,8 +59,6 @@ def login():
 @auth_bp.route('/me', methods=['GET'])
 @jwt_required()
 def get_me():
-    user_id = get_jwt_identity()
-    user = db.session.get(User, int(user_id))
-    if not user:
-        return jsonify({'error': 'User not found'}), 404
-    return jsonify(user.to_dict()), 200
+    # current_user ถูกโหลดจาก DB แล้ว (บัญชีที่ถูกระงับ/ไม่มีอยู่ ถูกตอบ 401 ไปก่อนถึงตรงนี้)
+    # หน้าเว็บเรียกตอนเปิดหน้าเพื่ออัปเดต role ล่าสุด
+    return jsonify(current_user.to_dict()), 200
