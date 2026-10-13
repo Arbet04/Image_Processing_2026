@@ -47,10 +47,10 @@ async def health():  # ← เช็คว่าต่อ Forge ได้ไห�
     ส่งงานต่อไปที่: check_health() ในไฟล์ forge_client.py
     """
     reachable = await check_health()  # ← ถาม Forge ว่ายังอยู่ไหม
-    return HealthResponse(forge_reachable=reachable, forge_url=FORGE_BASE_URL)  # ← FastAPI แปลงเป็น JSON ให้
+    return HealthResponse(forge_reachable=reachable, forge_url=FORGE_BASE_URL)  # ← ตอบว่าต่อ Forge ได้ไหม (FastAPI แปลงเป็น JSON ให้)
 
 
-@app.post("/generate", response_model=GenerateResponse)  # ← ผูกฟังก์ชันด้านล่างกับ POST /generate
+@app.post("/generate", response_model=GenerateResponse)  # ← ผูกฟังก์ชันด้านล่างกับ POST /generate (endpoint หลักที่ Backend เรียก)
 async def generate(req: GenerateRequest):  # ← FastAPI ตรวจข้อมูลให้ก่อนเข้าฟังก์ชัน (ผิด = ตอบ 422)
     """
     Endpoint หลักของทั้งระบบ — รับ prompt จาก client (Flask backend:
@@ -66,25 +66,25 @@ async def generate(req: GenerateRequest):  # ← FastAPI ตรวจข้อ�
     try:  # ← ลองเจนรูป ถ้าพลาดไปที่ except ตามชนิดของปัญหา
         result = await enqueue_generate(req)  # ← เข้าคิว แล้วรอจนได้รูป (await = คืนการทำงานให้ event loop ระหว่างรอ)
         return GenerateResponse(  # ← ตอบ 200 พร้อมรูป
-            success=True,  # ← สำเร็จ
+            success=True,  # ← บอกว่าสำเร็จ
             image_base64=result["image_base64"],  # ← รูปแบบ base64
             elapsed_seconds=result["elapsed_seconds"],  # ← เวลาที่ใช้เจน
         )
 
     except QueueFullError as e:  # ← คิวเต็ม
         # คิวเต็ม — ตอบ 503 ทันทีแทนการให้ client รอจน timeout
-        raise HTTPException(status_code=503, detail=str(e))  # ← ตอบ 503 พร้อมข้อความใน detail
+        raise HTTPException(status_code=503, detail=str(e))  # ← ตอบ 503 (Service Unavailable) พร้อมข้อความในช่อง detail
 
     except ForgeConnectionError as e:  # ← ต่อ Forge ไม่ได้ หรือหมดเวลา
         # Forge Neo ไม่ได้เปิดอยู่ หรือ timeout — ส่ง 503 (Service Unavailable) กลับไป
-        raise HTTPException(status_code=503, detail=str(e))  # ← ตอบ 503
+        raise HTTPException(status_code=503, detail=str(e))  # ← ตอบ 503 (Service Unavailable)
 
     except ForgeGenerationError as e:  # ← Forge เจนไม่สำเร็จ
         # Forge Neo เปิดอยู่แต่ generate ไม่สำเร็จ — ส่ง 502 (Bad Gateway) กลับไป
-        raise HTTPException(status_code=502, detail=str(e))  # ← ตอบ 502
+        raise HTTPException(status_code=502, detail=str(e))  # ← ตอบ 502 (Bad Gateway)
 
 
 @app.get("/")  # ← ผูกฟังก์ชันด้านล่างกับ GET /
-async def root():  # ← หน้าแรก
+async def root():  # ← หน้าแรก ใช้เช็คว่า service เปิดอยู่
     """หน้าแรกไว้เช็คเฉยๆ ว่า service รันอยู่ ไม่ได้ทำงานอะไรต่อ"""
     return {"message": "AI Service กำลังทำงาน ไปที่ /docs เพื่อทดสอบ API"}  # ← บอกว่า service รันอยู่
