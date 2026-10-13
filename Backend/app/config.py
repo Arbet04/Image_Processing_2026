@@ -10,6 +10,11 @@ class Config:
     # อายุ token (ชั่วโมง) — default ของ Flask-JWT-Extended คือ 15 นาที ซึ่งสั้นเกินไปสำหรับการใช้งานจริง
     JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=int(os.environ.get('JWT_EXPIRES_HOURS', '24')))
     
+    # ชื่อผู้ใช้ที่จะได้สิทธิ์ผู้ดูแลระบบ (role = 'admin') — ตั้งใน .env  พิมพ์ให้ตรงตัวพิมพ์เล็ก/ใหญ่
+    # ถ้ามีบัญชีชื่อนี้อยู่แล้วจะได้สิทธิ์ตอนเปิด server ถ้ายังไม่มีจะได้สิทธิ์ตอนสมัคร
+    # เว้นว่าง = ไม่ตั้ง admin อัตโนมัติ
+    ADMIN_USERNAME = os.environ.get('ADMIN_USERNAME', '').strip()
+
     # Database — ตอนนี้ใช้ SQLite (ไฟล์ instance/app.db) ถ้าจะใช้ PostgreSQL ให้ตั้ง DATABASE_URL ใน .env
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL', 'sqlite:///app.db')
     SQLALCHEMY_TRACK_MODIFICATIONS = False

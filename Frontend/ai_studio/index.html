@@ -158,6 +158,30 @@
 
   .explore-title { font-family: 'Fraunces', serif; font-size: 21px; font-weight: 600; margin: 26px 2px 6px; }
   .explore-sub { color: var(--muted); font-size: 13px; margin: 0 2px 18px; }
+  /* ── ADMIN: จัดการผู้ใช้ ── */
+  .admin-bar { display: flex; align-items: center; gap: 12px; margin: 0 2px 12px; }
+  .admin-status { font-size: 12.5px; color: var(--muted); }
+  .admin-status.error { color: var(--danger); }
+  .admin-status.success { color: var(--success); }
+  .admin-table-wrap { overflow-x: auto; border: 1px solid var(--border); background: var(--surface); }
+  .admin-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .admin-table th, .admin-table td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  .admin-table th { font-size: 11.5px; font-weight: 600; color: var(--muted); background: var(--surface2); }
+  .admin-table tr:last-child td { border-bottom: 0; }
+  .admin-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .admin-table th.num { text-align: right; }
+  .admin-table tr.suspended td.name { color: var(--muted); text-decoration: line-through; }
+  .admin-pill { font-size: 10.5px; padding: 3px 8px; }
+  .admin-pill.active { background: #1a3a2a; color: var(--success); }
+  .admin-pill.suspended { background: #3a1a1a; color: var(--danger); }
+  .admin-pill.role-admin { background: rgba(143,207,232,.14); color: var(--accent2); }
+  .admin-pill.role-user { background: var(--surface2); color: var(--muted); }
+  .admin-action { border: 1px solid var(--border); background: var(--surface2); color: var(--text); padding: 5px 12px; cursor: pointer; font: inherit; font-size: 12px; }
+  .admin-action:hover { background: var(--surface3); }
+  .admin-action.danger { border-color: var(--danger); color: var(--danger); }
+  .admin-action:disabled { opacity: .5; cursor: not-allowed; }
+  .admin-note { font-size: 11.5px; color: var(--muted); }
+
   .empty { border: 1px dashed var(--border); padding: 50px 20px; text-align: center; color: var(--muted); }
   .empty strong { display: block; color: var(--text); margin-bottom: 6px; font-family: 'Fraunces', serif; font-style: italic; }
 
@@ -281,6 +305,7 @@
       <button class="active" onclick="switchPage('generate',this)">สร้างภาพ</button>
       <button onclick="switchPage('edit',this)">แก้ไขภาพ</button>
       <button onclick="switchPage('library',this)">คลังภาพของฉัน</button>
+      <button id="nav-admin" class="hidden" onclick="switchPage('admin',this)">จัดการผู้ใช้</button>
     </nav>
     <div class="profile-menu-wrap">
       <div class="profile" onclick="toggleProfile(event)">A</div>
@@ -470,6 +495,32 @@
     <div class="empty hidden" id="libraryEmpty"><strong>ยังไม่มีภาพในคลัง</strong>กดบันทึกภาพจากหน้าสร้างภาพเพื่อเก็บไว้ที่นี่</div>
   </section>
 
+  <!-- ═══ จัดการผู้ใช้ (เห็นเฉพาะ admin — สิทธิ์จริงตรวจที่ Backend /api/admin/...) ═══ -->
+  <section id="admin" class="page-view">
+    <div class="explore-title">จัดการผู้ใช้</div>
+    <p class="explore-sub">ระงับหรือปลดระงับบัญชีผู้ใช้ — บัญชีที่ถูกระงับจะเข้าสู่ระบบและสร้างภาพไม่ได้ แต่บัญชีและรูปยังอยู่ครบ ปลดระงับได้ทุกเมื่อ</p>
+    <div class="admin-bar">
+      <button class="clear-btn" type="button" onclick="loadAdminUsers()">↻ โหลดใหม่</button>
+      <span class="admin-status" id="admin-status"></span>
+    </div>
+    <div class="admin-table-wrap">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>ชื่อผู้ใช้</th>
+            <th>สิทธิ์</th>
+            <th>สถานะ</th>
+            <th>วันที่สมัคร</th>
+            <th>เข้าสู่ระบบล่าสุด</th>
+            <th class="num">จำนวนรูป</th>
+            <th>การจัดการ</th>
+          </tr>
+        </thead>
+        <tbody id="admin-users-body"></tbody>
+      </table>
+    </div>
+  </section>
+
 </div>
 
 <div class="modal" id="modal" onclick="closeModal(event)">
@@ -570,12 +621,41 @@
     window.location.href = 'login.html';
   }
 
-  // ปุ่มโปรไฟล์: แสดงตัวอักษรแรกของชื่อผู้ใช้ที่ login อยู่ (ชี้เมาส์เพื่อดูชื่อเต็ม)
-  if (session && session.user && session.user.username) {
+  // แสดงข้อมูลผู้ใช้บนหน้า: ตัวอักษรแรกของชื่อบนปุ่มโปรไฟล์ (ชี้เมาส์เพื่อดูชื่อเต็ม)
+  // และเมนู "จัดการผู้ใช้" ซึ่งแสดงเฉพาะ role = 'admin'
+  // (การซ่อนเมนูเป็นแค่ความสะดวก — สิทธิ์จริงตรวจที่ Backend ทุกครั้ง)
+  function applyUserUI(user) {
+    if (!user || !user.username) return;
     const profileEl = document.querySelector('.profile');
-    profileEl.textContent = session.user.username.charAt(0).toUpperCase();
-    profileEl.title = session.user.username;
+    profileEl.textContent = user.username.charAt(0).toUpperCase();
+    profileEl.title = user.username + (user.role === 'admin' ? ' (ผู้ดูแลระบบ)' : '');
+    document.getElementById('nav-admin').classList.toggle('hidden', user.role !== 'admin');
   }
+  if (session) applyUserUI(session.user);
+
+  function forceLogout() {
+    localStorage.removeItem(SESSION_KEY);
+    window.location.href = 'login.html';
+  }
+
+  // ถาม Backend ว่าบัญชียังใช้ได้และ role ล่าสุดคืออะไร (role/สถานะอาจเปลี่ยนหลัง login)
+  // 401 = token หมดอายุ หรือบัญชีถูกระงับ -> กลับไปหน้า login
+  // ถ้าต่อ Backend ไม่ได้ จะใช้ข้อมูลจาก session เดิมไปก่อน
+  async function refreshSession() {
+    const s = getSession();
+    if (PREVIEW_MODE || !s || !s.access_token) return;
+    try {
+      const res = await fetch(BACKEND_URL + '/api/auth/me', {
+        headers: { 'Authorization': 'Bearer ' + s.access_token }
+      });
+      if (res.status === 401) { forceLogout(); return; }
+      if (!res.ok) return;
+      s.user = await res.json();
+      localStorage.setItem(SESSION_KEY, JSON.stringify(s));
+      applyUserUI(s.user);
+    } catch { /* ต่อ Backend ไม่ได้ — ไม่ต้องทำอะไร */ }
+  }
+  refreshSession();
 
   /* ═══════════ NAV / PROFILE ═══════════ */
   function switchPage(id, btn) {
@@ -583,6 +663,7 @@
     btn.classList.add('active');
     document.querySelectorAll('.page-view').forEach(v => v.classList.remove('active'));
     document.getElementById(id).classList.add('active');
+    if (id === 'admin') loadAdminUsers();
   }
 
   function toggleProfile(e) {
@@ -610,6 +691,120 @@
     }
   }
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeAbout(); });
+
+  /* ═══════════ ADMIN: จัดการผู้ใช้ ═══════════
+     เรียก /api/admin/... ของ Backend (ต้องเป็น role = 'admin' ไม่งั้นได้ 403)
+     ระงับ = ตั้ง status เป็น 'suspended' ไม่ได้ลบบัญชีหรือรูป จึงปลดระงับได้ */
+  function setAdminStatus(msg, type = '') {
+    const el = document.getElementById('admin-status');
+    el.className = 'admin-status ' + type;
+    el.textContent = msg;
+  }
+
+  // เรียก API ของ admin พร้อมแนบ token — คืน {res, data} หรือ null ถ้าถูกพาออกจากระบบแล้ว
+  async function adminFetch(path, method = 'GET') {
+    const s = getSession();
+    if (!s || !s.access_token) { forceLogout(); return null; }
+    const res = await fetch(BACKEND_URL + path, {
+      method,
+      headers: { 'Authorization': 'Bearer ' + s.access_token }
+    });
+    if (res.status === 401) { forceLogout(); return null; }
+    let data = null;
+    try { data = await res.json(); } catch {}
+    return { res, data };
+  }
+
+  // เวลาจาก Backend เป็น UTC ไม่มี timezone ติดมา จึงเติม Z ก่อนแปลงเป็นเวลาท้องถิ่น
+  function formatAdminDate(iso) {
+    if (!iso) return '—';
+    const d = new Date(iso + 'Z');
+    return isNaN(d) ? '—' : d.toLocaleString('th-TH', { dateStyle: 'medium', timeStyle: 'short' });
+  }
+
+  async function loadAdminUsers() {
+    if (PREVIEW_MODE) { setAdminStatus('โหมดพรีวิว: ยังไม่ได้เชื่อมต่อ Backend', 'error'); return; }
+    setAdminStatus('กำลังโหลด...');
+    try {
+      const r = await adminFetch('/api/admin/users');
+      if (!r) return;
+      if (r.res.status === 403) {
+        // ไม่ใช่ admin แล้ว (เช่นถูกถอนสิทธิ์) — ซ่อนเมนูและเคลียร์ตาราง
+        document.getElementById('nav-admin').classList.add('hidden');
+        document.getElementById('admin-users-body').replaceChildren();
+        setAdminStatus((r.data && r.data.error) || 'ต้องเป็นผู้ดูแลระบบเท่านั้น', 'error');
+        return;
+      }
+      if (!r.res.ok || !Array.isArray(r.data)) {
+        setAdminStatus('โหลดรายชื่อไม่สำเร็จ (' + r.res.status + ')' + (r.data && r.data.error ? ': ' + r.data.error : ''), 'error');
+        return;
+      }
+      renderAdminUsers(r.data);
+      const suspended = r.data.filter(u => u.status !== 'active').length;
+      setAdminStatus('ผู้ใช้ทั้งหมด ' + r.data.length + ' บัญชี' + (suspended ? ' · ถูกระงับ ' + suspended : ''));
+    } catch {
+      setAdminStatus('ต่อ Backend ไม่ได้', 'error');
+    }
+  }
+
+  // สร้างแถวด้วย DOM + textContent เท่านั้น (ชื่อผู้ใช้มาจากคนสมัคร ห้ามใส่ลง innerHTML)
+  function renderAdminUsers(users) {
+    const me = (getSession() || {}).user || {};
+    const cell = (text, cls) => { const td = document.createElement('td'); if (cls) td.className = cls; td.textContent = text; return td; };
+    const pill = (text, cls) => { const td = document.createElement('td'); const sp = document.createElement('span'); sp.className = 'admin-pill ' + cls; sp.textContent = text; td.appendChild(sp); return td; };
+
+    const rows = users.map(u => {
+      const active = u.status === 'active';
+      const tr = document.createElement('tr');
+      tr.dataset.userId = u.id;
+      if (!active) tr.className = 'suspended';
+      tr.appendChild(cell(u.username, 'name'));
+      tr.appendChild(pill(u.role === 'admin' ? 'ผู้ดูแลระบบ' : 'ผู้ใช้', u.role === 'admin' ? 'role-admin' : 'role-user'));
+      tr.appendChild(pill(active ? 'ใช้งานปกติ' : 'ถูกระงับ', active ? 'active' : 'suspended'));
+      tr.appendChild(cell(formatAdminDate(u.created_at)));
+      tr.appendChild(cell(formatAdminDate(u.last_login)));
+      tr.appendChild(cell(String(u.image_count), 'num'));
+
+      const actionTd = document.createElement('td');
+      if (u.id === me.id) {
+        actionTd.className = 'admin-note'; actionTd.textContent = 'บัญชีของคุณ';
+      } else if (u.role === 'admin') {
+        actionTd.className = 'admin-note'; actionTd.textContent = 'ระงับผู้ดูแลระบบไม่ได้';
+      } else {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'admin-action' + (active ? ' danger' : '');
+        btn.textContent = active ? 'ระงับ' : 'ปลดระงับ';
+        btn.onclick = () => setUserSuspended(u, active, btn);
+        actionTd.appendChild(btn);
+      }
+      tr.appendChild(actionTd);
+      return tr;
+    });
+    document.getElementById('admin-users-body').replaceChildren(...rows);
+  }
+
+  async function setUserSuspended(user, suspend, btn) {
+    const question = suspend
+      ? 'ระงับบัญชี "' + user.username + '"?\nผู้ใช้นี้จะเข้าสู่ระบบและสร้างภาพไม่ได้ทันที (บัญชีและรูป ' + user.image_count + ' รูปยังอยู่ ปลดระงับได้ภายหลัง)'
+      : 'ปลดระงับบัญชี "' + user.username + '"?';
+    if (!confirm(question)) return;
+    btn.disabled = true;
+    try {
+      const r = await adminFetch('/api/admin/users/' + user.id + (suspend ? '/suspend' : '/unsuspend'), 'POST');
+      if (!r) return;
+      if (!r.res.ok) {
+        setAdminStatus((suspend ? 'ระงับ' : 'ปลดระงับ') + 'ไม่สำเร็จ: ' + ((r.data && r.data.error) || r.res.status), 'error');
+        btn.disabled = false;
+        return;
+      }
+      await loadAdminUsers();
+      setAdminStatus((suspend ? 'ระงับบัญชี "' : 'ปลดระงับบัญชี "') + user.username + '" แล้ว', 'success');
+    } catch {
+      setAdminStatus('ต่อ Backend ไม่ได้', 'error');
+      btn.disabled = false;
+    }
+  }
 
   /* ═══════════ PROMPT / CHIPS ═══════════ */
   function updateCounter() {

@@ -5,7 +5,10 @@
 #
 # ชื่อตาราง/คอลัมน์ใน DB ต้องตรงกับไฟล์นี้ — db.create_all() สร้างเฉพาะตารางที่ยังไม่มี
 # ไม่เพิ่มคอลัมน์ให้ตารางเดิม (ถ้าไม่ตรงจะเจอ error แบบ "no such column: users.role")
-# หมายเหตุ: role / status / last_login มีคอลัมน์ไว้แล้ว แต่โค้ดตอนนี้ยังไม่ได้ใช้ตรวจสิทธิ์หรืออัปเดตค่า
+#
+# role:   'user' (ค่าเริ่มต้น) หรือ 'admin' — admin ตั้งจาก ADMIN_USERNAME ใน .env และใช้ /api/admin/... ได้
+# status: 'active' (ค่าเริ่มต้น) หรือ 'suspended' — บัญชีที่ถูกระงับ login ไม่ได้ และ token เดิมใช้ไม่ได้ทันที
+# last_login: อัปเดตทุกครั้งที่ login สำเร็จ
 
 from werkzeug.security import generate_password_hash, check_password_hash
 from app.extensions import db, utcnow
@@ -38,4 +41,5 @@ class User(db.Model):
             'role': self.role,
             'status': self.status,
             'created_at': self.created_at.isoformat() if self.created_at else None,
+            'last_login': self.last_login.isoformat() if self.last_login else None,
         }
