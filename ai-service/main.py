@@ -30,6 +30,15 @@ Endpoint ที่มี:
 # ส่งต่อไป:  ขั้น [3] models.py (ตรวจข้อมูล) → ขั้น [4] queue_manager.py (ต่อคิว)
 # ส่งกลับ:    {success, image_base64, elapsed_seconds} ให้ Backend หรือ error {"detail": "..."}
 # ─────────────────────────────────────────────────────────────────────────────
+# เส้นทางของ POST /generate:
+#
+#   Backend ──► [1] Uvicorn ──► [2] main.py generate(req)
+#                                  │  ก่อนเข้าฟังก์ชัน: [3] models.py ตรวจข้อมูล (ผิด → 422)
+#                                  ▼
+#                               [4] queue_manager ──► [5] forge_client ──► Forge Neo
+#                                  ▲
+#                                  └─ ได้รูป → ห่อเป็น GenerateResponse ตอบ 200 กลับ Backend
+# ─────────────────────────────────────────────────────────────────────────────
 
 from fastapi import FastAPI, HTTPException  # ← FastAPI = ตัวแอป, HTTPException = ตอบ error พร้อม status code
 from fastapi.middleware.cors import CORSMiddleware  # ← ตัวจัดการ CORS
