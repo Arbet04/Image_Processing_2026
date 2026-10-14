@@ -7,6 +7,31 @@ Forge Neo มี endpoint ชื่ออะไร ส่ง JSON รูปแ�
 ไฟล์เดียว ไฟล์อื่นไม่กระทบเลย
 """
 
+# ─────────────────────────────────────────────────────────────────────────────
+# เส้นทางคำขอใน AI Service: Backend ส่ง POST /generate (JSON) มาที่ port 8001 ผ่าน 5 ขั้นก่อนถึง GPU
+#   [1] Uvicorn :8001      เปิด port รับ HTTP จาก Backend (รันด้วย uvicorn main:app --host 0.0.0.0)
+#   [2] main.py            FastAPI จับคู่ POST /generate กับฟังก์ชัน generate()
+#   [3] models.py          Pydantic ตรวจข้อมูล ผิดตอบ 422 ทันที
+#   [4] queue_manager.py   เช็คคิวเต็ม รอถึงตา (เจนทีละรูป FIFO)
+#   [5] forge_client.py    httpx ส่งไป Forge Neo /sdapi/v1/txt2img
+#   แล้ว Forge Neo (port 7860) ใช้ GPU เจนรูป ตอบกลับเป็น base64 ย้อนทางเดิม [5] → [4] → [2] → Backend
+#
+# จุดที่คำขอถูกหยุดก่อนถึง GPU:  [หยุด] 422 ข้อมูลผิด · [หยุด] 503 คิวเต็ม · [หยุด] 503 ต่อ Forge ไม่ได้
+# ─────────────────────────────────────────────────────────────────────────────
+# ไฟล์นี้:    ขั้น [5] — ไฟล์เดียวที่คุยกับ Forge Neo ส่งคำขอเจนรูปด้วย httpx
+# รับจาก:    ขั้น [4] queue_manager.py ส่ง req มาเมื่อถึงคิว (และ [2] main.py เรียก check_health() สำหรับ /health)
+# ส่งต่อไป:  Forge Neo ที่ POST /sdapi/v1/txt2img แล้วคืน {image_base64, elapsed_seconds} กลับขึ้นไป [4] → [2]
+# ถ้าพลาด: โยน ForgeConnectionError ([หยุด] 503) หรือ ForgeGenerationError (502) ให้ main.py จัดการ
+# ─────────────────────────────────────────────────────────────────────────────
+# ส่งไป Forge Neo ยังไง (สรุปสั้น) — ต่อจาก [4.4] ใน queue_manager.py:
+#   [5.1] แปลง request เป็น JSON แบบที่ Forge Neo อ่านได้ (prompt, negative_prompt, steps, width, height, seed)
+#         task_id ไม่ถูกส่ง ใช้แค่ใน log
+#   [5.2] httpx ยิง POST {FORGE_BASE_URL}/sdapi/v1/txt2img รอได้สูงสุด FORGE_TIMEOUT_SECONDS (300 วินาที)
+#   [5.3] ต่อไม่ได้ / หมดเวลา → ForgeConnectionError (503)
+#   [5.4] Forge ตอบผิดปกติ → ForgeGenerationError (502)
+#   [5.5] หยิบรูป base64 จากคำตอบ ส่งกลับขึ้นไป [4] queue → [2] main.py → Backend
+# ─────────────────────────────────────────────────────────────────────────────
+
 import time  # ← ใช้จับเวลา
 import httpx  # ← ตัวส่ง HTTP ไปหา server อื่น ใช้กับ await ได้
 
@@ -14,6 +39,7 @@ from config import FORGE_BASE_URL, FORGE_TIMEOUT_SECONDS  # ← ค่าตั�
 from models import GenerateRequest  # ← รูปแบบคำขอจาก models.py
 
 
+# [หยุด] 503 ต่อ Forge ไม่ได้ — main.py จับ exception นี้
 class ForgeConnectionError(Exception):  # ← ต่อ Forge ไม่ได้เลย (main.py ตอบ 503)
     """
     โยน exception นี้เมื่อ "เชื่อมต่อ Forge Neo ไม่ได้เลย"
@@ -23,6 +49,7 @@ class ForgeConnectionError(Exception):  # ← ต่อ Forge ไม่ได้
     pass  # ← ไม่มีโค้ดเพิ่ม ใช้แค่ชื่อคลาสแยกประเภทปัญหา
 
 
+# [หยุด] 502 Forge เจนไม่สำเร็จ — main.py จับ exception นี้
 class ForgeGenerationError(Exception):  # ← ต่อได้ แต่ Forge ทำงานไม่สำเร็จ (main.py ตอบ 502)
     """
     โยน exception นี้เมื่อ "เชื่อมต่อได้ แต่ Forge Neo ทำงานไม่สำเร็จ"
@@ -32,6 +59,7 @@ class ForgeGenerationError(Exception):  # ← ต่อได้ แต่ Forge
     pass  # ← ไม่มีโค้ดเพิ่ม ใช้แค่ชื่อคลาสบอกชนิดของปัญหา
 
 
+# [ตรวจสถานะ] ใช้กับ GET /health ไม่ผ่านคิว
 async def check_health() -> bool:  # ← เช็คว่า Forge ยังตอบอยู่ไหม คืน True/False
     """
     เช็คแบบเร็วๆ ว่า Forge Neo ยังตอบสนองอยู่หรือไม่ (timeout แค่ 5 วินาที)
@@ -48,6 +76,7 @@ async def check_health() -> bool:  # ← เช็คว่า Forge ยัง�
         return False  # ← ถือว่าไม่พร้อม
 
 
+# [5] ฟังก์ชันหลัก — ถูกเรียกจาก [4] queue_manager.py เมื่อถึงคิว
 async def generate_image(req: GenerateRequest) -> dict:  # ← ฟังก์ชันหลัก: ส่งคำขอเจนรูปไป Forge
     """
     ฟังก์ชันหลัก — ยิง request ไปที่ /sdapi/v1/txt2img ของ Forge Neo เพื่อสร้างรูปจริง
@@ -62,6 +91,7 @@ async def generate_image(req: GenerateRequest) -> dict:  # ← ฟังก์�
                main.py เป็นคนจับแล้วแปลงเป็น HTTP error code ที่เหมาะสมต่อไป
     """
     # ประกอบข้อมูลให้ตรงตามรูปแบบที่ Forge Neo (สไตล์ A1111 API) ต้องการ
+    # [5.1] เตรียมข้อมูลตามรูปแบบของ Forge Neo — task_id ไม่ถูกส่ง ใช้แค่ใน log
     payload = {  # ← ข้อมูลที่จะส่งให้ Forge (ชื่อ key ตามที่ Forge กำหนด)
         "prompt": req.prompt,  # ← คำอธิบายรูป
         "negative_prompt": req.negative_prompt,  # ← สิ่งที่ไม่อยากให้มีในรูป
@@ -74,9 +104,11 @@ async def generate_image(req: GenerateRequest) -> dict:  # ← ฟังก์�
     start = time.time()  # จับเวลาเริ่มต้น ไว้คำนวณว่า generate ใช้เวลาเท่าไร
 
     try:  # ← ลองส่งคำขอ ถ้าต่อไม่ได้ไปที่ except
+        # [5.2] ส่งไป Forge Neo /sdapi/v1/txt2img แบบ async รอได้ 300 วินาทีต่อรูป
         async with httpx.AsyncClient(timeout=FORGE_TIMEOUT_SECONDS) as client:  # ← รอได้นานสุดตามค่าใน config (300 วินาที)
             resp = await client.post(f"{FORGE_BASE_URL}/sdapi/v1/txt2img", json=payload)  # ← ส่งไป Forge แล้วรอจน GPU เจนเสร็จ (ระหว่าง await นี้ event loop ไปทำงานอื่นได้)
 
+    # [5.3] ต่อ Forge ไม่ได้ / หมดเวลา → [หยุด] 503
     except httpx.ConnectError:  # ← หา Forge ไม่เจอ เช่น ยังไม่ได้เปิด หรือผิด port
         # กรณีที่ 1: หา Forge Neo ไม่เจอเลย (ปิดเครื่องอยู่ / ผิดพอร์ต)
         raise ForgeConnectionError(  # ← โยนปัญหาขึ้นไปให้ main.py
@@ -88,6 +120,7 @@ async def generate_image(req: GenerateRequest) -> dict:  # ← ฟังก์�
             f"Forge Neo ไม่ตอบสนองภายใน {FORGE_TIMEOUT_SECONDS} วินาที — ลองลด steps หรือขนาดรูปดู"
         )
 
+    # [5.4] ตรวจคำตอบของ Forge Neo — ผิดปกติ → 502
     if resp.status_code != 200:  # ← Forge ตอบรหัสอื่นที่ไม่ใช่ 200
         # กรณีที่ 3: Forge Neo ตอบกลับมาแต่ status code ไม่ใช่ 200 (มีบางอย่างผิดพลาด)
         raise ForgeGenerationError(f"Forge Neo ตอบกลับผิดพลาด: {resp.status_code} {resp.text[:200]}")  # ← แนบรหัสและข้อความ 200 ตัวอักษรแรก
@@ -99,6 +132,7 @@ async def generate_image(req: GenerateRequest) -> dict:  # ← ฟังก์�
         # กรณีที่ 4: status code 200 แต่ไม่มีรูปแนบมาด้วย (ผิดปกติ)
         raise ForgeGenerationError("ไม่พบรูปภาพใน response จาก Forge Neo")  # ← ถือว่าเจนไม่สำเร็จ
 
+    # [5.5] ได้รูปแล้ว คำนวณเวลา แล้วส่งกลับ [4] → [2] → Backend
     elapsed = round(time.time() - start, 2)  # ← เวลาที่ใช้ ปัด 2 ตำแหน่ง
 
     # ส่งผลลัพธ์กลับเป็น dict ธรรมดา (ไม่ใช่ Pydantic model) เพราะจุดนี้เป็นแค่

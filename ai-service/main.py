@@ -14,6 +14,23 @@ Endpoint ที่มี:
 ทดสอบ: เปิด http://127.0.0.1:8001/docs
 """
 
+# ─────────────────────────────────────────────────────────────────────────────
+# เส้นทางคำขอใน AI Service: Backend ส่ง POST /generate (JSON) มาที่ port 8001 ผ่าน 5 ขั้นก่อนถึง GPU
+#   [1] Uvicorn :8001      เปิด port รับ HTTP จาก Backend (รันด้วย uvicorn main:app --host 0.0.0.0)
+#   [2] main.py            FastAPI จับคู่ POST /generate กับฟังก์ชัน generate()
+#   [3] models.py          Pydantic ตรวจข้อมูล ผิดตอบ 422 ทันที
+#   [4] queue_manager.py   เช็คคิวเต็ม รอถึงตา (เจนทีละรูป FIFO)
+#   [5] forge_client.py    httpx ส่งไป Forge Neo /sdapi/v1/txt2img
+#   แล้ว Forge Neo (port 7860) ใช้ GPU เจนรูป ตอบกลับเป็น base64 ย้อนทางเดิม [5] → [4] → [2] → Backend
+#
+# จุดที่คำขอถูกหยุดก่อนถึง GPU:  [หยุด] 422 ข้อมูลผิด · [หยุด] 503 คิวเต็ม · [หยุด] 503 ต่อ Forge ไม่ได้
+# ─────────────────────────────────────────────────────────────────────────────
+# ไฟล์นี้:    ขั้น [2] — ประตูหน้าบ้าน รับคำขอ ส่งเข้าคิว และแปลงปัญหาเป็นรหัส HTTP
+# รับจาก:    ขั้น [1] Uvicorn ส่งคำขอ HTTP มาให้ (Backend: Backend/app/services/ai_client.py)
+# ส่งต่อไป:  ขั้น [3] models.py (ตรวจข้อมูล) → ขั้น [4] queue_manager.py (ต่อคิว)
+# ส่งกลับ:    {success, image_base64, elapsed_seconds} ให้ Backend หรือ error {"detail": "..."}
+# ─────────────────────────────────────────────────────────────────────────────
+
 from fastapi import FastAPI, HTTPException  # ← FastAPI = ตัวแอป, HTTPException = ตอบ error พร้อม status code
 from fastapi.middleware.cors import CORSMiddleware  # ← ตัวจัดการ CORS
 
@@ -39,6 +56,7 @@ app.add_middleware(  # ← ติดตั้งชั้นที่ทุก�
 )
 
 
+# [ตรวจสถานะ] GET /health — ไม่ผ่านคิว ถาม Forge Neo ตรงผ่าน forge_client.check_health()
 @app.get("/health", response_model=HealthResponse)  # ← ผูกฟังก์ชันด้านล่างกับ GET /health
 async def health():  # ← เช็คว่าต่อ Forge ได้ไหม
     """
@@ -50,7 +68,10 @@ async def health():  # ← เช็คว่าต่อ Forge ได้ไห�
     return HealthResponse(forge_reachable=reachable, forge_url=FORGE_BASE_URL)  # ← ตอบว่าต่อ Forge ได้ไหม (FastAPI แปลงเป็น JSON ให้)
 
 
+# [2] endpoint หลัก: Uvicorn [1] ส่งคำขอ POST /generate มาที่ฟังก์ชันนี้
 @app.post("/generate", response_model=GenerateResponse)  # ← ผูกฟังก์ชันด้านล่างกับ POST /generate (endpoint หลักที่ Backend เรียก)
+# [2] → [3] ก่อนเข้าฟังก์ชัน FastAPI ให้ Pydantic สร้าง req จาก JSON และตรวจเงื่อนไข
+#           ไม่ผ่าน = [หยุด] 422 ตอบทันที ฟังก์ชันนี้ไม่ถูกเรียก
 async def generate(req: GenerateRequest):  # ← FastAPI ตรวจข้อมูลให้ก่อนเข้าฟังก์ชัน (ผิด = ตอบ 422)
     """
     Endpoint หลักของทั้งระบบ — รับ prompt จาก client (Flask backend:
@@ -64,21 +85,26 @@ async def generate(req: GenerateRequest):  # ← FastAPI ตรวจข้อ�
                     อีกทีหนึ่ง เพื่อคุยกับ Forge Neo จริงๆ)
     """
     try:  # ← ลองเจนรูป ถ้าพลาดไปที่ except ตามชนิดของปัญหา
+        # [2] → [4] ส่งเข้าคิว แล้วรอจนได้รูปกลับมาจาก [5]
         result = await enqueue_generate(req)  # ← เข้าคิว แล้วรอจนได้รูป (await = คืนการทำงานให้ event loop ระหว่างรอ)
+        # [5] → [4] → [2] ได้รูปแล้ว ห่อเป็นคำตอบ 200 ส่งกลับ Backend
         return GenerateResponse(  # ← ตอบ 200 พร้อมรูป
             success=True,  # ← บอกว่าสำเร็จ
             image_base64=result["image_base64"],  # ← รูปแบบ base64
             elapsed_seconds=result["elapsed_seconds"],  # ← เวลาที่ใช้เจน
         )
 
+    # [หยุด] 503 คิวเต็ม — มาจากขั้น [4] queue_manager.py
     except QueueFullError as e:  # ← คิวเต็ม
         # คิวเต็ม — ตอบ 503 ทันทีแทนการให้ client รอจน timeout
         raise HTTPException(status_code=503, detail=str(e))  # ← ตอบ 503 (Service Unavailable) พร้อมข้อความในช่อง detail
 
+    # [หยุด] 503 ต่อ Forge ไม่ได้ / หมดเวลา — มาจากขั้น [5] forge_client.py
     except ForgeConnectionError as e:  # ← ต่อ Forge ไม่ได้ หรือหมดเวลา
         # Forge Neo ไม่ได้เปิดอยู่ หรือ timeout — ส่ง 503 (Service Unavailable) กลับไป
         raise HTTPException(status_code=503, detail=str(e))  # ← ตอบ 503 (Service Unavailable)
 
+    # [หยุด] 502 Forge Neo เจนไม่สำเร็จ — มาจากขั้น [5] forge_client.py
     except ForgeGenerationError as e:  # ← Forge เจนไม่สำเร็จ
         # Forge Neo เปิดอยู่แต่ generate ไม่สำเร็จ — ส่ง 502 (Bad Gateway) กลับไป
         raise HTTPException(status_code=502, detail=str(e))  # ← ตอบ 502 (Bad Gateway)
