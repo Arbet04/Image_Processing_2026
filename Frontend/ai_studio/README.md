@@ -14,37 +14,67 @@ Browser (หน้าเว็บนี้) → Backend (Flask :5000) → AI Ser
 - `index.html` — หน้าหลัก: สร้างภาพ, แก้ไขภาพ, คลังภาพของฉัน
 - `config.js` — ตั้งค่า `BACKEND_URL` ที่ทั้งสองหน้าใช้ร่วมกัน
 
-## ตั้งค่าก่อนใช้
+ไม่ต้องติดตั้ง package ใดๆ — มีแค่ browser และ web server สำหรับเสิร์ฟไฟล์
 
-แก้ `BACKEND_URL` ใน `config.js` ให้ชี้ไปที่ Backend
+### ไฟล์ตั้งค่ากับ Git
+
+- Frontend **ไม่มีไฟล์ `.env`** — ค่าที่ต้องตั้งมีแค่ `BACKEND_URL` ใน `config.js`
+- `config.js` **อยู่ใน Git** (ค่าใน repo คือ `http://127.0.0.1:5000`) แก้ในเครื่องตัวเองได้ แต่ **อย่า commit IP ของเครื่องตัวเองขึ้นไป** ไม่งั้นทุกคนที่ pull จะได้ IP นั้นไปด้วย
+  ก่อน commit ให้เช็ค `git status` ถ้ามี `config.js` ที่ไม่ได้ตั้งใจแก้ ให้คืนค่าด้วย `git restore Frontend/ai_studio/config.js`
+- ถ้าเปิดผ่าน nginx ไม่ต้องแก้ไฟล์นี้ใน repo — แก้สำเนาที่ `C:\image-project\frontend\config.js` แทน (ดู [nginx/README.md](../../nginx/README.md))
+
+## วิธีรัน
+
+มี 2 แบบ เลือกแบบเดียว:
+
+| แบบ | ใช้เมื่อ | ดูที่ |
+|---|---|---|
+| **ก. Python http.server** | ทดสอบเอง หรือยังไม่ได้ตั้ง nginx | ด้านล่าง |
+| **ข. nginx** | ใช้งานจริงแบบหลายเครื่อง (ผู้ใช้เปิดเว็บที่ port 80) | [nginx/README.md](../../nginx/README.md) |
+
+### แบบ ก. Python http.server
+
+**1. เปิด Backend ไว้ก่อน** แล้วเช็คว่าเปิดอยู่จริง:
+
+```powershell
+curl.exe http://<IP Backend หรือ 127.0.0.1>:5000/api/health
+```
+
+ต้องได้ `"status": "ok"` ถ้าไม่ได้ ให้แก้ที่ Backend ก่อน (ดู [Backend/README.md](../../Backend/README.md))
+
+**2. ตั้ง `BACKEND_URL` ใน `config.js`**
 
 | กรณี | ค่า |
 |---|---|
-| ทดสอบเครื่องเดียว | `http://127.0.0.1:5000` |
-| Backend อยู่เครื่องอื่น | `http://<IP เครื่อง Backend>:5000` |
-| ใช้ nginx เสิร์ฟหน้าเว็บและส่งต่อ `/api/` | `''` (ค่าว่าง) |
+| Backend อยู่เครื่องเดียวกัน | `const BACKEND_URL = 'http://127.0.0.1:5000';` (ค่าเริ่มต้น) |
+| Backend อยู่เครื่องอื่น | `const BACKEND_URL = 'http://<IP เครื่อง Backend>:5000';` |
+| เปิดผ่าน nginx | `const BACKEND_URL = '';` — ดูแบบ ข. |
 
-ทุกเครื่องที่เปิดหน้าเว็บต้องตั้งค่านี้ให้ชี้ไป Backend ตัวเดียวกัน
-หลังแก้ให้กด **Ctrl+F5** ใน browser เพื่อโหลด `config.js` ใหม่
+ห้ามมี `/` ต่อท้าย
 
-## วิธีเปิด
+**3. เปิด web server**
 
-แนะนำให้เปิดผ่าน web server (`http://`) — ถ้าดับเบิลคลิกไฟล์ (`file://`) browser รุ่นใหม่อาจบล็อก
-ไม่ให้หน้าเว็บยิงไปหา IP ในวง LAN
-
-**วิธีที่ 1: Python**
-
-```
-cd Frontend/ai_studio
+```powershell
+cd Frontend\ai_studio
 py -3 -m http.server 5500
 ```
 
-แล้วเปิด `http://localhost:5500/login.html`
-(เพิ่ม `--bind 0.0.0.0` ถ้าต้องการให้เครื่องอื่นเปิดผ่าน `http://<IP เครื่องนี้>:5500/login.html`)
+ต้องเห็น `Serving HTTP on :: port 5500` เปิด terminal นี้ทิ้งไว้ ปิดด้วย `Ctrl+C`
+(ถ้าต้องการให้เครื่องอื่นเปิดหน้าเว็บนี้ด้วย ให้ใช้ `py -3 -m http.server 5500 --bind 0.0.0.0` และเปิด firewall ให้ port 5500)
 
-**วิธีที่ 2: Live Server ใน VS Code**
+หรือใช้ **Live Server** ใน VS Code (extension ritwickdey.LiveServer) → คลิกขวาที่ `login.html` → **Open with Live Server**
 
-ติดตั้ง extension **Live Server** (ritwickdey.LiveServer) → คลิกขวาที่ `login.html` → **Open with Live Server**
+ห้ามดับเบิลคลิกเปิดไฟล์ตรงๆ (`file://`) — browser รุ่นใหม่อาจบล็อกไม่ให้หน้าเว็บยิงไปหา IP ในวง LAN
+
+**4. เปิด browser** ไปที่ `http://localhost:5500/login.html`
+
+**5. ตรวจว่าใช้ได้**
+
+1. สมัครสมาชิก → เข้าสู่ระบบ → ต้องเข้าหน้าหลักได้ (ถ้าขึ้น "ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ Backend ได้" ดูตารางปัญหาด้านล่าง)
+2. ในหน้าหลัก กด **ทดสอบการเชื่อมต่อ** ต้องขึ้นว่าเชื่อมต่อสำเร็จ (เช็คเฉพาะ Backend)
+3. พิมพ์ prompt แล้วกด **สร้างภาพ** → ต้องได้รูป (ครั้งแรกอาจนานเพราะ Forge Neo โหลดโมเดล)
+
+แก้ `config.js` แล้วต้องกด **Ctrl+F5** ใน browser เพื่อโหลดไฟล์ใหม่ (ไม่ต้อง restart web server)
 
 ## ฟีเจอร์
 
